@@ -1,11 +1,11 @@
 {
-  "name": "@firestitch/package",
-  "title": "package.json -> Rename Title to Component Title",
-  "description": "@firestitch/package",
+  "name": "@firestitch/scroll-picker",
+  "title": "Scroll Picker",
+  "description": "@firestitch/scroll-picker",
   "version": "7.0.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Firestitch/ngx-package"
+    "url": "https://github.com/Firestitch/ngx-scroll-picker"
   },
   "author": {
     "name": "Firestitch",
@@ -60,7 +60,8 @@
     "webpack": "^4.30.0",
     "webpack-dev-server": "^3.3.1",
     "zone.js": "^0.9.0",
-    "lodash-es": "^4.17.11"
+    "lodash-es": "^4.17.11",
+    "date-fns": "^2.0.0-alpha.27"
   },
   "engines": {
     "node": ">=6.0.0"

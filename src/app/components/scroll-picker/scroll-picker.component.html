@@ -1,0 +1,28 @@
+<div class="container" (mousewheel)="scroll($event)">
+  <div
+    class="clone-scroller"
+    style="padding-top: 90px; padding-bottom: 90px;">
+    <div class="item" *ngFor="let value of values">{{value}}</div>
+  </div>
+  <div class="top">
+    <div class="top-1" (click)="addSelectedValue(-3)"></div>
+    <div class="top-2" (click)="addSelectedValue(-2)"></div>
+    <div class="top-3" (click)="addSelectedValue(-1)"></div>
+  </div>
+  <div class="bottom">
+    <div class="bottom-3" (click)="addSelectedValue(1)"></div>
+    <div class="bottom-2" (click)="addSelectedValue(2)"></div>
+    <div class="bottom-1" (click)="addSelectedValue(3)"></div>
+  </div>
+  <div
+    class="scroller"
+    [ngStyle]="{ transform: 'translateZ(0) rotateX(' + (selectedIndex * 22.5) + 'deg)', 'padding-top': '90px', 'padding-bottom': '90px' }">
+    <div
+      class="item"
+      [ngStyle]="{ transform: 'rotateX(' + (i * -22.5) + 'deg) translateZ(90px)'}"
+      *ngFor="let value of values; let i = index"
+      (click)="setSelectedIndex(i)">
+        {{value}}
+    </div>
+  </div>
+</div>
