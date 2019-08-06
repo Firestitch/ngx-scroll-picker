@@ -27,6 +27,6 @@ export class KitchenSinkComponent {
 
     this.days = range(1, 15);
 
-    this.years = range(2010, 2020);
+    this.years = range(1900, 2020);
   }
 }

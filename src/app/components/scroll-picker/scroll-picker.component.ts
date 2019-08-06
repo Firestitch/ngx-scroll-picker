@@ -9,6 +9,7 @@ import { Subject } from 'rxjs';
 })
 export class ScrollPickerComponent implements OnInit, OnDestroy {
 
+  public targetI = 0;
   private _destroy$ = new Subject();
 
   @Input() values = [];
@@ -34,22 +35,47 @@ export class ScrollPickerComponent implements OnInit, OnDestroy {
     this.selectedIndex = index;
   }
 
-  public scroll(event: WheelEvent) {
+  public scrollll(ev) {
+    this.targetI = ev;
+  }
 
-    if (event.deltaY > 0) {
 
-      if (this.selectedIndex >= (this.values.length - 1)) {
-        return event.preventDefault();
-      }
-      this.selectedIndex++;
-    } else {
+  public ff(ev) {
+    ev.preventDefault();
+    ev.stopPropagation();
+    console.log(ev);
+  }
 
-      if (!this.selectedIndex) {
-        return event.preventDefault();
-      }
+  public calcTranslate(itemIndex) {
+    const index = itemIndex - this.targetI;
+    const rotate = 67.5 - (index * 22.5);
+    const translate =  7 * (index - 3);
 
-      this.selectedIndex--;
-    }
+    const res = {
+      'transform': `rotateX(${rotate}deg)`,
+    };
+
+    // console.log(res);
+    return res;
+  }
+
+  public scroll(event) {
+
+    // console.log(event);
+    // if (event.deltaY > 0) {
+    //
+    //   if (this.selectedIndex >= (this.values.length - 1)) {
+    //     return event.preventDefault();
+    //   }
+    //   this.selectedIndex++;
+    // } else {
+    //
+    //   if (!this.selectedIndex) {
+    //     return event.preventDefault();
+    //   }
+    //
+    //   this.selectedIndex--;
+    // }
   }
 
   public ngOnDestroy() {
