@@ -21,14 +21,14 @@
   //-webkit-transform : translateZ(-90px) rotateX(0deg);
   //-webkit-transform-style : preserve-3d;
   height : 200px;
-  overflow-y: auto;
+  overflow-y: hidden;
 
   .item {
       backface-visibility: hidden;
       //-webkit-backface-visibility: hidden;
       width : 100%;
-    height: 30px;
-      transition: all 300ms;
+      height: 30px;
+      // transition: all 300ms;
       color : black;
       transform-origin: 50% 50%;
       -webkit-transform-style : preserve-3d;

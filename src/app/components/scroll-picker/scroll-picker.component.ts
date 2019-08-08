@@ -1,5 +1,7 @@
-import { Component, ElementRef, HostListener, Inject, OnDestroy, OnInit, Input } from '@angular/core';
+import { Component, ElementRef, OnDestroy, OnInit, Input, ViewChild, AfterViewInit, NgZone } from '@angular/core';
 import { Subject } from 'rxjs';
+import { throttle } from 'lodash-es';
+import { CdkVirtualScrollViewport } from '@angular/cdk/scrolling';
 
 
 @Component({
@@ -7,21 +9,53 @@ import { Subject } from 'rxjs';
   templateUrl: './scroll-picker.component.html',
   styleUrls: ['./scroll-picker.component.scss']
 })
-export class ScrollPickerComponent implements OnInit, OnDestroy {
+export class ScrollPickerComponent implements OnInit, OnDestroy, AfterViewInit {
 
+  @ViewChild('viewport') virtualScrollViewport: CdkVirtualScrollViewport;
+
+  public scrollDispatcher;
   public targetI = 0;
+  public index = 50;
   private _destroy$ = new Subject();
 
   @Input() values = [];
   public selectedIndex = 0;
 
   constructor(
-    public element: ElementRef,
+    private _element: ElementRef,
+    private _ngZone: NgZone
   ) {}
 
   public ngOnInit() {
 
+    this.virtualScrollViewport.scrollToIndex(this.index, 'smooth');
+
+    this.virtualScrollViewport.elementRef.nativeElement
+    .addEventListener('wheel', this._wheel.bind(this));
   }
+
+  private _wheel(event) {
+
+    if (this.index > 0 && event.deltaY < 0) {
+      this.index--;
+      throttle(this._throttle.bind(this), 80)(event);
+
+    }
+
+    if (this.index < (this.values.length) && event.deltaY > 0) {
+      this.index++;
+      throttle(this._throttle.bind(this), 50)(event);
+    }
+
+  }
+
+  private _throttle(event) {
+    console.log(this.index, this.values.length, event.deltaY);
+
+    this.virtualScrollViewport.scrollToIndex(this.index, 'smooth');
+  }
+
+  ngAfterViewInit() {}
 
   public addSelectedValue(value) {
 
@@ -39,13 +73,6 @@ export class ScrollPickerComponent implements OnInit, OnDestroy {
     this.targetI = ev;
   }
 
-
-  public ff(ev) {
-    ev.preventDefault();
-    ev.stopPropagation();
-    console.log(ev);
-  }
-
   public calcTranslate(itemIndex) {
     const index = itemIndex - this.targetI;
     const rotate = 67.5 - (index * 22.5);
@@ -57,25 +84,6 @@ export class ScrollPickerComponent implements OnInit, OnDestroy {
 
     // console.log(res);
     return res;
-  }
-
-  public scroll(event) {
-
-    // console.log(event);
-    // if (event.deltaY > 0) {
-    //
-    //   if (this.selectedIndex >= (this.values.length - 1)) {
-    //     return event.preventDefault();
-    //   }
-    //   this.selectedIndex++;
-    // } else {
-    //
-    //   if (!this.selectedIndex) {
-    //     return event.preventDefault();
-    //   }
-    //
-    //   this.selectedIndex--;
-    // }
   }
 
   public ngOnDestroy() {

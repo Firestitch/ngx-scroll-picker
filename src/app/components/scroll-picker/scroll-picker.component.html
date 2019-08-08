@@ -4,7 +4,7 @@
     style="padding-top: 90px; padding-bottom: 90px;">
     <div class="item" *ngFor="let value of values">{{value}}</div>
   </div>-->
-  <div class="top">
+  <!-- <div class="top">
     <div class="top-1" (click)="addSelectedValue(-3)"></div>
     <div class="top-2" (click)="addSelectedValue(-2)"></div>
     <div class="top-3" (click)="addSelectedValue(-1)"></div>
@@ -13,12 +13,24 @@
     <div class="bottom-3" (click)="addSelectedValue(1)"></div>
     <div class="bottom-2" (click)="addSelectedValue(2)"></div>
     <div class="bottom-1" (click)="addSelectedValue(3)"></div>
-  </div>
-  <cdk-virtual-scroll-viewport [itemSize]="30" class="scroller"
-                               (scrolledIndexChange)="scrollll($event)">
-    <div *cdkVirtualFor="let value of values; let i = index" class="item"
-         [ngStyle]="calcTranslate(i)"
-    >{{(i - targetI)}} {{ value }}</div>
+  </div> -->
+  <cdk-virtual-scroll-viewport
+    #viewport
+    [itemSize]="30"
+    class="scroller"
+    (scrolledIndexChange)="scrollll($event)">
+
+      <div
+          *cdkVirtualFor="let value of values; let i = index"
+          class="item"
+          [ngStyle]="calcTranslate(i)">
+          {{ value }}
+      </div>
+
+      <div class="item"></div>
+      <div class="item"></div>
+      <div class="item"></div>
+
   </cdk-virtual-scroll-viewport>
 <!--  <div-->
 <!--    class="scroller"-->
