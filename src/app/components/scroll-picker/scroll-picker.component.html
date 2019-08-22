@@ -24,7 +24,7 @@
         class="item"
 
         [ngClass]="{ visible: selectedIndex > (index - 10) && selectedIndex < (index + 10) }"
-        [ngStyle]="{ transform: 'rotateX(' + (index * degreeIncrement * -1) + 'deg) translateZ(90px)', transition: 'transform 50ms' }">
+        [ngStyle]="{ transform: 'rotateX(' + (index * degreeIncrement * -1) + 'deg) translateZ(90px) translate3d(0,0,0)', transition: 'transform 40ms' }">
         {{item}}
       </div>
     </ng-container>

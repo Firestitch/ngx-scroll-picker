@@ -17,9 +17,9 @@
 }
 
 .scroller {
-  -webkit-transition : -webkit-transform 100ms ease;
-  -webkit-transform : translateZ(-90px) rotateX(0deg);
-  -webkit-transform-style : preserve-3d;
+  transition : transform 100ms ease;
+  transform : translateZ(-90px) rotateX(0deg);
+  transform-style : preserve-3d;
   height : 100%;
 
   .item {
@@ -29,7 +29,7 @@
       width : 100%;
       color : black;
       transform-origin: 50% 50%;
-      -webkit-transform-style : preserve-3d;
+      transform-style : preserve-3d;
       visibility: hidden;
       z-index: 0;
 
@@ -37,46 +37,6 @@
         visibility: visible;
         background: #fff;
         z-index: 1;
-      }
-
-      &.item-0 {
-        transform: rotateX(0deg) translateZ(90px);
-      }
-
-      &.item-1 {
-        transform: rotateX(-22.5deg) translateZ(90px);
-      }
-
-      &.item-2 {
-        transform: rotateX(-45deg) translateZ(90px);
-      }
-
-      &.item-3 {
-        transform: rotateX(-67.5deg) translateZ(90px);
-      }
-
-      &.item-4 {
-        transform: rotateX(-90deg) translateZ(90px);
-      }
-
-      &.item-5 {
-        transform: rotateX(-112.5deg) translateZ(90px);
-      }
-
-      &.item-6 {
-        transform: rotateX(-135deg) translateZ(90px);
-      }
-
-      &.item-7 {
-        transform: rotateX(-157.5deg) translateZ(90px);
-      }
-
-      &.item-8 {
-        transform: rotateX(-180deg) translateZ(90px);
-      }
-
-      &.item-9 {
-        transform: rotateX(-202.5deg) translateZ(90px);
       }
   }
 }
