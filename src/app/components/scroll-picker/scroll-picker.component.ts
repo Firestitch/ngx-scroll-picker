@@ -120,6 +120,8 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, ControlValueAcc
   }
 
   public scroll(event: WheelEvent) {
+    event.preventDefault();
+    event.stopPropagation();
 
     if (event.deltaY > 0) {
 
