@@ -19,14 +19,15 @@
     [ngStyle]="{ transform: 'translateZ(0) rotateX(' + (selectorDegree) + 'deg)', 'padding-top': '90px', 'padding-bottom': '90px' }">
 
 
+    <ng-container *ngFor="let item of values; let index = index; trackBy: trackByFn">
+      <div
+        class="item"
 
-    <div
-      class="item"
-      *ngFor="let item of values; let index = index"
-      [ngClass]="{ visible: selectedIndex > (index - 3) && selectedIndex < (index + 3) }"
-      [ngStyle]="{ transform: 'rotateX(' + (index * degreeIncrement * -1) + 'deg) translateZ(90px)'}">
-      {{item}}
-    </div>
+        [ngClass]="{ visible: selectedIndex > (index - 10) && selectedIndex < (index + 10) }"
+        [ngStyle]="{ transform: 'rotateX(' + (index * degreeIncrement * -1) + 'deg) translateZ(90px)', transition: 'transform 50ms' }">
+        {{item}}
+      </div>
+    </ng-container>
 
 <!--
     <ng-container >

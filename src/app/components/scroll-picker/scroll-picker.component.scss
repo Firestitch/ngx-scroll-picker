@@ -27,14 +27,16 @@
       backface-visibility: hidden;
       -webkit-backface-visibility: hidden;
       width : 100%;
-      transition: all 50ms;
       color : black;
       transform-origin: 50% 50%;
       -webkit-transform-style : preserve-3d;
       visibility: hidden;
+      z-index: 0;
 
       &.visible {
         visibility: visible;
+        background: #fff;
+        z-index: 1;
       }
 
       &.item-0 {

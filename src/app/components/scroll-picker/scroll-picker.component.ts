@@ -79,6 +79,10 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, ControlValueAcc
     this._currentTouchY = null;
   }
 
+  trackByFn(index, item) {
+    return index;
+  }
+
   public touchMove(event: any) {
     event.preventDefault();
     event.stopPropagation();
