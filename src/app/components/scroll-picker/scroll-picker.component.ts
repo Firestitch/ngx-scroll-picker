@@ -84,6 +84,8 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, ControlValueAcc
   }
 
   public touchMove(event: any) {
+    event.preventDefault();
+    event.stopPropagation();
     const y = event.changedTouches[0].clientY;
 
     //console.log('touchMove', event);
@@ -98,7 +100,7 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, ControlValueAcc
       const diff = this._currentTouchY - y;
       if (diff > 10) {
         this._currentTouchY = y;
-        this.setIndex(this.selectedIndex - Math.round(diff / 20));
+        this.setIndex(this.selectedIndex - Math.round(diff / 10));
       }
     } else {
 
@@ -106,7 +108,7 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, ControlValueAcc
       const diff = y - this._currentTouchY;
       if (diff > 10) {
         this._currentTouchY = y;
-        this.setIndex(this.selectedIndex + Math.round(diff / 20));
+        this.setIndex(this.selectedIndex + Math.round(diff / 10));
       }
     }
   }
