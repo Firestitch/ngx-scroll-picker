@@ -41,7 +41,7 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, ControlValueAcc
 
   public ngOnInit() {
     this.scrollContainer.nativeElement
-    .addEventListener('wheel', throttle(this.scroll.bind(this), 100));
+    .addEventListener('wheel', throttle(this.scroll.bind(this), 20));
 
     this.scrollContainer.nativeElement
     .addEventListener('touchstart', this.touchStart.bind(this));
@@ -68,10 +68,6 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, ControlValueAcc
 
   public addSelectedValue(value) {
 
-    const newSelectedIndex = this.selectedIndex + value;
-    if (newSelectedIndex >= 0 && newSelectedIndex < this.values.length) {
-      this.selectedIndex += value;
-    }
   }
 
   public setSelectedIndex(index) {
@@ -153,11 +149,11 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, ControlValueAcc
     this.currentDegree = this.selectedIndex * this.degreeIncrement;
 
     this.selectorDegree = this.degreeIncrement * 5;
-    if (this.selectedIndex <= 5) {
+    //if (this.selectedIndex <= 5) {
       this.selectorDegree = this.degreeIncrement * this.selectedIndex;
-    }
+    //}
 
-    this._showSegment(this.selectedIndex);
+    //this._showSegment(this.selectedIndex);
   }
 
   public ngOnDestroy() {
@@ -166,7 +162,8 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, ControlValueAcc
   }
 
   public _showSegment(degree) {
-    const start = degree < 5 ? 0 : degree - 5;
-    this.segments = this.values.slice(start, degree + 5);
+    const size = 200;
+    const start = degree < size ? 0 : degree - size;
+    this.segments = this.values.slice(start, degree + size);
   }
 }

@@ -31,6 +31,11 @@
       color : black;
       transform-origin: 50% 50%;
       -webkit-transform-style : preserve-3d;
+      visibility: hidden;
+
+      &.visible {
+        visibility: visible;
+      }
 
       &.item-0 {
         transform: rotateX(0deg) translateZ(90px);

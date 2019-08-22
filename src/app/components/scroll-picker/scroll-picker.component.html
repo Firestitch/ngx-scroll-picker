@@ -19,36 +19,21 @@
     [ngStyle]="{ transform: 'translateZ(0) rotateX(' + (selectorDegree) + 'deg)', 'padding-top': '90px', 'padding-bottom': '90px' }">
 
 
+
+    <div
+      class="item"
+      *ngFor="let item of values; let index = index"
+      [ngClass]="{ visible: selectedIndex > (index - 3) && selectedIndex < (index + 3) }"
+      [ngStyle]="{ transform: 'rotateX(' + (index * degreeIncrement * -1) + 'deg) translateZ(90px)'}">
+      {{item}}
+    </div>
+
+<!--
+    <ng-container >
     <ng-container
-      *ngTemplateOutlet="estimateTemplate;context:{index: 0, segments: segments}">
+      *ngTemplateOutlet="estimateTemplate;context:{index: index, selectedIndex: selectedIndex, segments: segments}">
     </ng-container>
-    <ng-container
-      *ngTemplateOutlet="estimateTemplate;context:{index: 1, segments: segments}">
-    </ng-container>
-    <ng-container
-      *ngTemplateOutlet="estimateTemplate;context:{index: 2, segments: segments}">
-    </ng-container>
-    <ng-container
-      *ngTemplateOutlet="estimateTemplate;context:{index: 3, segments: segments}">
-    </ng-container>
-    <ng-container
-      *ngTemplateOutlet="estimateTemplate;context:{index: 4, segments: segments}">
-    </ng-container>
-    <ng-container
-      *ngTemplateOutlet="estimateTemplate;context:{index: 5, segments: segments}">
-    </ng-container>
-    <ng-container
-      *ngTemplateOutlet="estimateTemplate;context:{index: 6, segments: segments}">
-    </ng-container>
-    <ng-container
-      *ngTemplateOutlet="estimateTemplate;context:{index: 7, segments: segments}">
-    </ng-container>
-    <ng-container
-      *ngTemplateOutlet="estimateTemplate;context:{index: 8, segments: segments}">
-    </ng-container>
-    <ng-container
-      *ngTemplateOutlet="estimateTemplate;context:{index: 9, segments: segments}">
-    </ng-container>
+  </ng-container> -->
 
 <!--
     <div
@@ -57,15 +42,14 @@
       *ngFor="let value of segments; let i = index"
       (click)="setSelectedIndex(i)">
         {{value}}
-    </div> -->
+    </div> .
+
+  [class]="'item item-' + index"
+-->
   </div>
 </div>
 
 
-{{selectedIndex}}
 <ng-template #estimateTemplate let-index="index">
-  <div
-    [class]="'item item-' + index">
-     {{segments[index]}}
-  </div>
+
 </ng-template>
