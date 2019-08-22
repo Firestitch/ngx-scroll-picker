@@ -1,10 +1,10 @@
-.container,
-.container * {
+.scroll-container,
+.scroll-container * {
     box-sizing: border-box;
     -webkit-user-select: none;
 }
 
-.container {
+.scroll-container {
     text-align: center;
     position: relative;
     height: 210px;
@@ -27,10 +27,50 @@
       backface-visibility: hidden;
       -webkit-backface-visibility: hidden;
       width : 100%;
-      transition: all 300ms;
+      transition: all 50ms;
       color : black;
       transform-origin: 50% 50%;
       -webkit-transform-style : preserve-3d;
+
+      &.item-0 {
+        transform: rotateX(0deg) translateZ(90px);
+      }
+
+      &.item-1 {
+        transform: rotateX(-22.5deg) translateZ(90px);
+      }
+
+      &.item-2 {
+        transform: rotateX(-45deg) translateZ(90px);
+      }
+
+      &.item-3 {
+        transform: rotateX(-67.5deg) translateZ(90px);
+      }
+
+      &.item-4 {
+        transform: rotateX(-90deg) translateZ(90px);
+      }
+
+      &.item-5 {
+        transform: rotateX(-112.5deg) translateZ(90px);
+      }
+
+      &.item-6 {
+        transform: rotateX(-135deg) translateZ(90px);
+      }
+
+      &.item-7 {
+        transform: rotateX(-157.5deg) translateZ(90px);
+      }
+
+      &.item-8 {
+        transform: rotateX(-180deg) translateZ(90px);
+      }
+
+      &.item-9 {
+        transform: rotateX(-202.5deg) translateZ(90px);
+      }
   }
 }
 

@@ -18,6 +18,8 @@ export class KitchenSinkComponent {
   public months = [];
   public years = [];
   public days = [];
+  public day = 5;
+  public year = 2000;
   constructor(private exampleComponent: FsExampleComponent,
               private message: FsMessage) {
     exampleComponent.setConfigureComponent(KitchenSinkConfigureComponent, { config: this.config });
@@ -25,8 +27,8 @@ export class KitchenSinkComponent {
       this.months.push(localize.month(i));
     }
 
-    this.days = range(1, 15);
+    this.days = range(1, 31);
 
-    this.years = range(2010, 2020);
+    this.years = range(1900, 2020);
   }
 }

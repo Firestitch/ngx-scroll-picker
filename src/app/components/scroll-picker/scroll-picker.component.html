@@ -1,4 +1,4 @@
-<div class="container" (mousewheel)="scroll($event)">
+<div class="scroll-container" #scrollContainer>
   <div
     class="clone-scroller"
     style="padding-top: 90px; padding-bottom: 90px;">
@@ -16,13 +16,56 @@
   </div>
   <div
     class="scroller"
-    [ngStyle]="{ transform: 'translateZ(0) rotateX(' + (selectedIndex * 22.5) + 'deg)', 'padding-top': '90px', 'padding-bottom': '90px' }">
+    [ngStyle]="{ transform: 'translateZ(0) rotateX(' + (selectorDegree) + 'deg)', 'padding-top': '90px', 'padding-bottom': '90px' }">
+
+
+    <ng-container
+      *ngTemplateOutlet="estimateTemplate;context:{index: 0, segments: segments}">
+    </ng-container>
+    <ng-container
+      *ngTemplateOutlet="estimateTemplate;context:{index: 1, segments: segments}">
+    </ng-container>
+    <ng-container
+      *ngTemplateOutlet="estimateTemplate;context:{index: 2, segments: segments}">
+    </ng-container>
+    <ng-container
+      *ngTemplateOutlet="estimateTemplate;context:{index: 3, segments: segments}">
+    </ng-container>
+    <ng-container
+      *ngTemplateOutlet="estimateTemplate;context:{index: 4, segments: segments}">
+    </ng-container>
+    <ng-container
+      *ngTemplateOutlet="estimateTemplate;context:{index: 5, segments: segments}">
+    </ng-container>
+    <ng-container
+      *ngTemplateOutlet="estimateTemplate;context:{index: 6, segments: segments}">
+    </ng-container>
+    <ng-container
+      *ngTemplateOutlet="estimateTemplate;context:{index: 7, segments: segments}">
+    </ng-container>
+    <ng-container
+      *ngTemplateOutlet="estimateTemplate;context:{index: 8, segments: segments}">
+    </ng-container>
+    <ng-container
+      *ngTemplateOutlet="estimateTemplate;context:{index: 9, segments: segments}">
+    </ng-container>
+
+<!--
     <div
       class="item"
-      [ngStyle]="{ transform: 'rotateX(' + (i * -22.5) + 'deg) translateZ(90px)'}"
-      *ngFor="let value of values; let i = index"
+      [ngStyle]="{ transform: 'rotateX(' + ((i) * degreeIncrement * -1) + 'deg) translateZ(90px)'}"
+      *ngFor="let value of segments; let i = index"
       (click)="setSelectedIndex(i)">
         {{value}}
-    </div>
+    </div> -->
   </div>
 </div>
+
+
+{{selectedIndex}}
+<ng-template #estimateTemplate let-index="index">
+  <div
+    [class]="'item item-' + index">
+     {{segments[index]}}
+  </div>
+</ng-template>

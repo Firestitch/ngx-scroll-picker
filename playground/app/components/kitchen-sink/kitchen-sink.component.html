@@ -1,9 +1,11 @@
 
 <div fxLayout="row" fxLayoutGap="10px">
+<!--
+  <fs-scroll-picker [values]="months"></fs-scroll-picker> -->
 
-  <fs-scroll-picker [values]="months"></fs-scroll-picker>
+  <fs-scroll-picker [values]="days" name="day" [(ngModel)]="day"></fs-scroll-picker>
 
-  <fs-scroll-picker [values]="days"></fs-scroll-picker>
-
-  <fs-scroll-picker [values]="years"></fs-scroll-picker>
+  <fs-scroll-picker [values]="years" name="year" [(ngModel)]="year"></fs-scroll-picker>
 </div>
+
+{{day}}, {{year}}
