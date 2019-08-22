@@ -41,7 +41,7 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, ControlValueAcc
 
   public ngOnInit() {
     this.scrollContainer.nativeElement
-    .addEventListener('wheel', this.scroll.bind(this));
+    .addEventListener('wheel', throttle(this.scroll.bind(this), 100));
 
     this.scrollContainer.nativeElement
     .addEventListener('touchstart', this.touchStart.bind(this));
@@ -100,15 +100,16 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, ControlValueAcc
       const diff = this._currentTouchY - y;
       if (diff > 10) {
         this._currentTouchY = y;
-        this.setIndex(this.selectedIndex - Math.round(diff / 10));
+        this.setIndex(this.selectedIndex + Math.round(diff / 10));
       }
+
     } else {
 
       console.log('up', y)
       const diff = y - this._currentTouchY;
       if (diff > 10) {
         this._currentTouchY = y;
-        this.setIndex(this.selectedIndex + Math.round(diff / 10));
+        this.setIndex(this.selectedIndex - Math.round(diff / 10));
       }
     }
   }
