@@ -1,11 +1,20 @@
 
 <div fxLayout="row" fxLayoutGap="10px">
-<!--
-  <fs-scroll-picker [values]="months"></fs-scroll-picker> -->
+
+  <fs-scroll-picker [values]="months" name="month" [(ngModel)]="month">
+    <ng-template fs-scroll-picker-template let-value="value">
+      {{value.name}}
+    </ng-template>
+  </fs-scroll-picker>
 
   <fs-scroll-picker [values]="days" name="day" [(ngModel)]="day"></fs-scroll-picker>
 
   <fs-scroll-picker [values]="years" name="year" [(ngModel)]="year"></fs-scroll-picker>
 </div>
 
-{{day}}, {{year}}
+<fieldset>
+  <legend>Selected</legend>
+  Month: {{month.value}}, Day: {{day}}, Year: {{year}}
+</fieldset>
+
+<br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>

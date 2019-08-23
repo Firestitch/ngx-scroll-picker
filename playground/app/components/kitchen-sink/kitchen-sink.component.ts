@@ -20,12 +20,17 @@ export class KitchenSinkComponent {
   public days = [];
   public day = 5;
   public year = 2000;
+  public month;
+
   constructor(private exampleComponent: FsExampleComponent,
               private message: FsMessage) {
     exampleComponent.setConfigureComponent(KitchenSinkConfigureComponent, { config: this.config });
+
     for (let i = 0; i < 12; i++) {
-      this.months.push(localize.month(i));
+      this.months.push({ name: localize.month(i), value: i + 1 });
     }
+
+    this.month = Object.assign({}, this.months[2]);
 
     this.days = range(1, 31);
 
