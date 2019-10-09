@@ -49,7 +49,7 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, ControlValueAcc
     const index = findIndex(this.values, item => {
       return isEqual(value, item);
     });
-    this.setIndex(index);
+    this.setIndex(index, true);
   }
 
   public registerOnChange(fn: (value: any) => any): void {
