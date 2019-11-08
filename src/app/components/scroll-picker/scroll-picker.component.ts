@@ -1,7 +1,18 @@
-import { Component, ElementRef, OnDestroy, OnInit, Input, forwardRef, ViewChild, ContentChild, AfterContentInit, ContentChildren, QueryList, TemplateRef, HostListener } from '@angular/core';
+import {
+  ChangeDetectionStrategy, ChangeDetectorRef,
+  Component,
+  ContentChild,
+  ElementRef,
+  forwardRef,
+  Input,
+  OnDestroy,
+  OnInit,
+  TemplateRef,
+  ViewChild
+} from '@angular/core';
 import { Subject } from 'rxjs';
-import { NG_VALUE_ACCESSOR, ControlValueAccessor } from '@angular/forms';
-import { throttle, findIndex, isEqual } from 'lodash-es';
+import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
+import { findIndex, isEqual, throttle } from 'lodash-es';
 import { ScrollPickerTemplateComponent } from '../../directives/scroll-picker-template.directive';
 
 
@@ -13,7 +24,8 @@ import { ScrollPickerTemplateComponent } from '../../directives/scroll-picker-te
     provide: NG_VALUE_ACCESSOR,
     useExisting: forwardRef(() => ScrollPickerComponent),
     multi: true
-  } ]
+  } ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ScrollPickerComponent implements OnInit, OnDestroy, ControlValueAccessor {
 
@@ -33,6 +45,8 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, ControlValueAcc
   private _onTouched = () => {};
   private _onChange = (value: any) => {};
   private _currentTouchY = null;
+
+  constructor(private _cdRef: ChangeDetectorRef) {}
 
   public ngOnInit() {
     this.scrollContainer.nativeElement
@@ -134,6 +148,8 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, ControlValueAcc
 
     this.selectedIndex = index;
     this.selectedDegree = this.degreeIncrement * this.selectedIndex;
+
+    this._cdRef.markForCheck();
 
     if (change) {
       this._onChange(this.values[this.selectedIndex]);
