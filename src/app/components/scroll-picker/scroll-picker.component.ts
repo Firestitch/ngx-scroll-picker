@@ -29,10 +29,10 @@ import { ScrollPickerTemplateComponent } from '../../directives/scroll-picker-te
 })
 export class ScrollPickerComponent implements OnInit, OnDestroy, ControlValueAccessor {
 
-  @ContentChild(ScrollPickerTemplateComponent, { read: TemplateRef })
+  @ContentChild(ScrollPickerTemplateComponent, { read: TemplateRef, static: false })
   template: TemplateRef<ScrollPickerTemplateComponent>;
 
-  @ViewChild('scrollContainer') scrollContainer: ElementRef;
+  @ViewChild('scrollContainer', { static: true }) scrollContainer: ElementRef;
   @Input() values = [];
 
 
