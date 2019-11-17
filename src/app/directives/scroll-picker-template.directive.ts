@@ -1,4 +1,4 @@
-import { Directive, Component } from '@angular/core';
+import { Directive } from '@angular/core';
 
 
 @Directive({

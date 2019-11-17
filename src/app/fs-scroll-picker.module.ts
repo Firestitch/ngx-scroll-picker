@@ -1,4 +1,4 @@
-import { NgModule, ModuleWithProviders } from '@angular/core';
+import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 import { ScrollPickerComponent } from './components/scroll-picker/scroll-picker.component';
@@ -17,10 +17,4 @@ import { ScrollPickerTemplateComponent } from './directives/scroll-picker-templa
     ScrollPickerTemplateComponent
   ],
 })
-export class FsScrollPickerModule {
-  static forRoot(): ModuleWithProviders {
-    return {
-      ngModule: FsScrollPickerModule
-    };
-  }
-}
+export class FsScrollPickerModule {}
