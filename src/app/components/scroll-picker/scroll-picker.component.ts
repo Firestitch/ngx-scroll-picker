@@ -39,10 +39,10 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, ControlValueAcc
     .addEventListener('wheel', throttle(this.scroll.bind(this), 40), { passive: false });
 
     this.scrollContainer.nativeElement
-    .addEventListener('touchend', this.touchEnd.bind(this));
+    .addEventListener('touchend', this.touchEnd.bind(this), { passive: true });
 
     this.scrollContainer.nativeElement
-    .addEventListener('touchmove', throttle(this.touchMove.bind(this), 80));
+    .addEventListener('touchmove', throttle(this.touchMove.bind(this), 80), { passive: false });
   }
 
   public writeValue(value: any) {
