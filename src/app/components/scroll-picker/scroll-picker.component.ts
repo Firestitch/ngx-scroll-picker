@@ -12,7 +12,6 @@ import {
 } from '@angular/core';
 import { Subject } from 'rxjs';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
-import { findIndex, isEqual, throttle } from 'lodash-es';
 import { ScrollPickerTemplateComponent } from '../../directives/scroll-picker-template.directive';
 
 
@@ -40,7 +39,10 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, ControlValueAcc
   public degreeIncrement = 22.5;
   public selectedDegree = 0;
   public segments = [];
+  public displayValues = [];
   public selectedIndex = 0;
+  public value;
+  public indexes = [];
 
   private _onTouched = () => {};
   private _onChange = (value: any) => {};
@@ -50,20 +52,26 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, ControlValueAcc
 
   public ngOnInit() {
     this.scrollContainer.nativeElement
-    .addEventListener('wheel', throttle(this.scroll.bind(this), 40), { passive: false });
+    .addEventListener('wheel', this.scroll.bind(this), { passive: false });
 
-    this.scrollContainer.nativeElement
-    .addEventListener('touchend', this.touchEnd.bind(this), { passive: true });
+    // this.scrollContainer.nativeElement
+    // .addEventListener('touchend', this.touchEnd.bind(this), { passive: true });
 
-    this.scrollContainer.nativeElement
-    .addEventListener('touchmove', throttle(this.touchMove.bind(this), 80), { passive: false });
+    // this.scrollContainer.nativeElement
+    // .addEventListener('touchmove', throttle(this.touchMove.bind(this), 80), { passive: false });
   }
 
   public writeValue(value: any) {
-    const index = findIndex(this.values, item => {
-      return isEqual(value, item);
-    });
-    this.setIndex(index, true);
+    this.value = value;
+
+    
+    let index = this.values.findIndex((item) => {
+      return this.value === item;
+    });   
+
+    index = index === -1 ? 0 : index;
+    this.updateIndex(index);
+
   }
 
   public registerOnChange(fn: (value: any) => any): void {
@@ -82,78 +90,61 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, ControlValueAcc
     return index;
   }
 
-  public touchMove(event: any) {
-    event.preventDefault();
-    event.stopPropagation();
-    const y = event.changedTouches[0].clientY;
-
-    if (this._currentTouchY === null) {
-      this._currentTouchY = y;
-    }
-
-    if (this._currentTouchY > y) {
-
-      const diff = this._currentTouchY - y;
-      if (diff > 10) {
-        this._currentTouchY = y;
-        this.setIndex(this.selectedIndex + Math.round(diff / 10), true);
-      }
-
-    } else {
-      const diff = y - this._currentTouchY;
-      if (diff > 10) {
-        this._currentTouchY = y;
-        this.setIndex(this.selectedIndex - Math.round(diff / 10), true);
-      }
-    }
-  }
-
-  public touchEnd(event: WheelEvent) {
-    this._currentTouchY = null;
-  }
-
-  public move(value) {
-    this.setIndex(this.selectedIndex + value, true);
-  }
-
   public scroll(event: any) {
 
     event.preventDefault();
     event.stopPropagation();
 
-    if (event.deltaY > 0) {
+    let index = this.values.findIndex((item) => {
+      return this.value === item;
+    });
 
-      if (this.selectedIndex > this.values.length) {
-        return event.preventDefault();
+    if (event.deltaY > 0) {
+      if(index === (this.values.length - 1)) {
+        index = -1;
       }
-      this.setIndex(this.selectedIndex + 1, true);
+      
+      index++;
+      this.value = this.values[index];
 
     } else {
-
-      if (!this.selectedIndex) {
-        return event.preventDefault();
+      if(index === 0) {
+        index = this.values.length;
       }
+      index--;
+    }    
 
-      this.setIndex(this.selectedIndex - 1, true);
-    }
-
-
+    this.updateIndex(index);
   }
 
-  public setIndex(index, change = false) {
+  public updateIndex(index) {
+    this.value = this.values[index];
 
-    if ((index >= this.values.length) || index < 0) {
-      return;
+    let start = index - 3;
+    let end = index + 4;
+    
+    this.displayValues = [];
+    if(start < 0) {
+      this.displayValues = [
+        ...this.values.slice(start),
+        ...this.values.slice(0, end),
+      ];
+    } else if(end > (this.values.length - 1)) {
+      end = this.values.length - end;
+      this.displayValues = [
+        ...this.values.slice(start),
+        ...this.values.slice(0, end),
+      ];
+      
+    } else {
+      this.displayValues = [
+        ...this.values.slice(start, end),
+      ];
     }
 
-    this.selectedIndex = index;
-    this.selectedDegree = this.degreeIncrement * this.selectedIndex;
-
+    console.log(index,this.indexes);
+    
     this._cdRef.markForCheck();
-
-    if (change) {
-      this._onChange(this.values[this.selectedIndex]);
-    }
   }
 
   public ngOnDestroy() {

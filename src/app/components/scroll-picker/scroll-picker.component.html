@@ -1,11 +1,18 @@
 <div class="scroll-container" #scrollContainer>
 
-  <div class="top" (click)="move(-1)"></div>
-  <div class="bottom" (click)="move(1)"></div>
+  <div class="top"></div>
+  <div class="bottom"></div>
   <div
-    class="scroller"
-    [ngStyle]="{ transform: 'translateZ(0) rotateX(' + (selectedDegree) + 'deg)' }">
-      <ng-container *ngFor="let value of values; let index = index; trackBy: trackByFn">
+    class="scroller">
+      <div class="value value1">{{displayValues[0]}}</div>
+      <div class="value value2">{{displayValues[1]}}</div>
+      <div class="value value3">{{displayValues[2]}}</div>
+      <div class="value value4">{{displayValues[3]}}</div>
+      <div class="value value5">{{displayValues[4]}}</div>
+      <div class="value value6">{{displayValues[5]}}</div>
+      <div class="value value7">{{displayValues[6]}}</div>
+
+      <!-- <ng-container *ngFor="let value of values; let index = index; trackBy: trackByFn">
         <div
           class="value"
           [ngClass]="{ visible: selectedIndex > (index - 10) && selectedIndex < (index + 10) }"
@@ -21,6 +28,6 @@
             {{value}}
           </ng-template>
         </div>
-      </ng-container>
+      </ng-container> -->
   </div>
 </div>

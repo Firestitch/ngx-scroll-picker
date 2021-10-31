@@ -1,7 +1,7 @@
-:host {
-  height: 180px;
-  overflow: hidden;
-}
+// :host {
+//   height: 180px;
+//   overflow: hidden;
+// }
 
 .scroll-container,
 .scroll-container * {
@@ -28,21 +28,50 @@
   padding: 90px 0;
 
   .value {
-      position: absolute;
-      backface-visibility: hidden;
-      -webkit-backface-visibility: hidden;
-      width : 100%;
-      color : black;
-      transform-origin: 50% 50%;
-      transform-style : preserve-3d;
-      visibility: hidden;
-      z-index: 0;
+    position: absolute;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    width : 100%;
+    color : black;
+    transform-origin: 50% 50%;
+    transform-style : preserve-3d;
+    visibility: visible;
+    z-index: 0;
+    transition: transform 40ms ease 0s;
 
-      &.visible {
-        visibility: visible;
-        background: #fff;
-        z-index: 1;
-      }
+    &.visible {
+      background: #fff;
+      z-index: 1;
+    }
+
+    &.value1 {
+      transform: rotateX(67.5deg) translateZ(90px) translate3d(0px, 0px, 0px);
+    }
+
+    &.value2 {
+      transform: rotateX(45deg) translateZ(90px) translate3d(0px, 0px, 0px);
+    }
+
+    &.value3 {
+      transform: rotateX(22.5deg) translateZ(90px) translate3d(0px, 0px, 0px);
+    }
+
+    &.value4 {
+      transform: rotateX(0deg) translateZ(90px) translate3d(0px, 0px, 0px);
+    }
+
+    &.value5 {
+      transform: rotateX(-22.5deg) translateZ(90px) translate3d(0px, 0px, 0px);
+    }
+
+    &.value6 {
+      transform: rotateX(-45deg) translateZ(90px) translate3d(0px, 0px, 0px);
+    }
+
+    &.value7 {
+      transform: rotateX(-67.5deg) translateZ(90px) translate3d(0px, 0px, 0px);
+    }
+    
   }
 }
 

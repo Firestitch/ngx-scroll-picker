@@ -33,7 +33,6 @@ export class KitchenSinkComponent {
     this.month = Object.assign({}, this.months[2]);
 
     this.days = range(1, 31);
-
     this.years = range(1900, 2020);
   }
 }
