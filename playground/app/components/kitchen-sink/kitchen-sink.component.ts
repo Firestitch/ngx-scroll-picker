@@ -22,8 +22,10 @@ export class KitchenSinkComponent {
   public year = 2000;
   public month;
 
-  constructor(private exampleComponent: FsExampleComponent,
-              private message: FsMessage) {
+  constructor(
+    private exampleComponent: FsExampleComponent,
+    private message: FsMessage
+  ) {
     exampleComponent.setConfigureComponent(KitchenSinkConfigureComponent, { config: this.config });
 
     for (let i = 0; i < 12; i++) {
@@ -32,7 +34,14 @@ export class KitchenSinkComponent {
 
     this.month = Object.assign({}, this.months[2]);
 
-    this.days = range(1, 31);
-    this.years = range(1900, 2020);
+    this.days = range(1, 31)
+    .map((day) => {
+      return { name: day, value: day };
+    });
+
+    this.years = range(1900, 2020)
+    .map((year) => {
+      return { name: year, value: year };
+    });
   }
 }

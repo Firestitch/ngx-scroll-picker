@@ -10,7 +10,8 @@ import {
   TemplateRef,
   ViewChild
 } from '@angular/core';
-import { Subject } from 'rxjs';
+import { fromEvent, merge, Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { ScrollPickerTemplateComponent } from '../../directives/scroll-picker-template.directive';
 
@@ -34,46 +35,54 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, ControlValueAcc
   @ViewChild('scrollContainer', { static: true }) scrollContainer: ElementRef;
   @Input() values = [];
 
-
-  private _destroy$ = new Subject();
   public degreeIncrement = 22.5;
   public selectedDegree = 0;
-  public segments = [];
   public displayValues = [];
   public selectedIndex = 0;
   public value;
   public indexes = [];
+  public touchData: any = {};
+  public valuesEl;
+  public deg = 0;
 
+  private _touchDestroy$: Subject<void>;
+  private _destroy$ = new Subject();
   private _onTouched = () => {};
   private _onChange = (value: any) => {};
-  private _currentTouchY = null;
 
   constructor(private _cdRef: ChangeDetectorRef) {}
 
   public ngOnInit() {
-    this.scrollContainer.nativeElement
-    .addEventListener('wheel', this.scroll.bind(this), { passive: false });
+    fromEvent(this.scrollContainer.nativeElement, 'wheel')
+    .pipe(
+      takeUntil(this._destroy$),
+    )
+    .subscribe((event: UIEvent) => {
+      this.scroll(event);
+    });
 
-    // this.scrollContainer.nativeElement
-    // .addEventListener('touchend', this.touchEnd.bind(this), { passive: true });
-
-    // this.scrollContainer.nativeElement
-    // .addEventListener('touchmove', throttle(this.touchMove.bind(this), 80), { passive: false });
+    merge(
+      fromEvent(this.scrollContainer.nativeElement, 'touchstart'),
+      fromEvent(this.scrollContainer.nativeElement, 'mousedown')
+    )
+    .pipe(
+      takeUntil(this._destroy$),
+    )
+    .subscribe((event: UIEvent) => {
+      this.touchStart(event);
+    });  
+    
+    this.valuesEl = this.scrollContainer.nativeElement.querySelector('.values');
   }
 
   public writeValue(value: any) {
     this.value = value;
-
-    
-    let index = this.values.findIndex((item) => {
-      return this.value === item;
-    });   
+    let index = this.getValueIndex();
 
     index = index === -1 ? 0 : index;
     this.updateIndex(index);
-
   }
-
+  
   public registerOnChange(fn: (value: any) => any): void {
     this._onChange = fn
   }
@@ -86,39 +95,113 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, ControlValueAcc
     this.selectedIndex = index;
   }
 
-  trackByFn(index, item) {
-    return index;
+  public touchStart(event) {
+    event.preventDefault();
+    this._touchDestroy$ = new Subject();
+
+    merge(
+      fromEvent(document, 'touchmove'),
+      fromEvent(document, 'mousemove')
+    )
+    .pipe(
+      takeUntil(this._touchDestroy$),
+      takeUntil(this._destroy$),
+    )
+    .subscribe((event: UIEvent) => {
+       this.touchMove(event);
+    }); 
+
+    merge(
+      fromEvent(document, 'touchend'),
+      fromEvent(document, 'touchcancel'),
+      fromEvent(document, 'mouseup')
+    )
+    .pipe(
+      takeUntil(this._touchDestroy$),
+      takeUntil(this._destroy$),
+    )
+    .subscribe((event: UIEvent) => {
+      this._touchDestroy$.next();
+      this._touchDestroy$.complete();
+      this._touchDestroy$ = null;
+
+      this.touchEnd(event);
+    });  
   }
 
-  public scroll(event: any) {
+  public touchMove(event) {
+    const endY = event.changedTouches ? event.changedTouches[0].pageY : event.pageY;
+    this.touchData.startY = this.touchData.startY || endY;
+    const moveY = (this.touchData.moveY || 0) + (endY - (this.touchData.startY));
 
+    if (Math.abs(moveY) >= 10) {
+      if(moveY > 0) {
+        this.next();
+      } else {
+        this.prev();
+      }
+
+      this.touchData.startY = endY;
+      this.touchData.moveY = 0; 
+    }
+  }
+
+  public touchEnd(event) {
+    event.preventDefault();
+    this.deg = 0;
+
+    if (this.touchData.moveY >= 30) {
+      this.prev();
+    } else if (this.touchData.moveY <= -30) {
+      this.next();
+    }
+  } 
+
+  public scroll(event: any) {
     event.preventDefault();
     event.stopPropagation();
 
-    let index = this.values.findIndex((item) => {
-      return this.value === item;
-    });
-
     if (event.deltaY > 0) {
-      if(index === (this.values.length - 1)) {
-        index = -1;
-      }
-      
-      index++;
-      this.value = this.values[index];
+      this.next();
 
     } else {
-      if(index === 0) {
-        index = this.values.length;
-      }
-      index--;
-    }    
+      this.prev();
+    }        
+  }
 
+  public prev() {
+    let index = this.getValueIndex();
+
+    if(index === 0) {
+      index = this.values.length;
+    }
+
+    index--;
+    this.updateIndex(index);    
+  }
+
+  public next() {
+    let index = this.getValueIndex();
+
+    if(index === (this.values.length - 1)) {
+      index = -1;
+    }
+    
+    index++; 
+    
     this.updateIndex(index);
   }
 
+  public getValueIndex() {
+    return this.values.findIndex((item) => {
+      return this.value === item.value;
+    }); 
+  }
+
   public updateIndex(index) {
-    this.value = this.values[index];
+    this.value = this.values[index] ? this.values[index].value : null;
+
+    this._onChange(this.value);
 
     let start = index - 3;
     let end = index + 4;
@@ -142,8 +225,6 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, ControlValueAcc
       ];
     }
 
-    console.log(index,this.indexes);
-    
     this._cdRef.markForCheck();
   }
 

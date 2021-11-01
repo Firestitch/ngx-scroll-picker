@@ -1,33 +1,15 @@
 <div class="scroll-container" #scrollContainer>
-
   <div class="top"></div>
   <div class="bottom"></div>
-  <div
-    class="scroller">
-      <div class="value value1">{{displayValues[0]}}</div>
-      <div class="value value2">{{displayValues[1]}}</div>
-      <div class="value value3">{{displayValues[2]}}</div>
-      <div class="value value4">{{displayValues[3]}}</div>
-      <div class="value value5">{{displayValues[4]}}</div>
-      <div class="value value6">{{displayValues[5]}}</div>
-      <div class="value value7">{{displayValues[6]}}</div>
-
-      <!-- <ng-container *ngFor="let value of values; let index = index; trackBy: trackByFn">
-        <div
-          class="value"
-          [ngClass]="{ visible: selectedIndex > (index - 10) && selectedIndex < (index + 10) }"
-          [ngStyle]="{ transform: 'rotateX(' + (index * degreeIncrement * -1) + 'deg) translateZ(90px) translate3d(0,0,0)', transition: 'transform 40ms' }">
-
-          <ng-container *ngIf="template; else elseTemplate">
-            <ng-container
-              *ngTemplateOutlet="template;context:{ value: value }">
-            </ng-container>
-          </ng-container>
-
-          <ng-template #elseTemplate>
-            {{value}}
-          </ng-template>
-        </div>
-      </ng-container> -->
+  <div class="scroller">
+      <div class="values">
+        <div class="value value1" [ngStyle]="{ transform: 'rotateX(' + (67.5 + deg) + 'deg) translateZ(90px) translate3d(0px, 0px, 0px)' }">{{displayValues[0].name}}</div>
+        <div class="value value1" [ngStyle]="{ transform: 'rotateX(' + (45 + deg) + 'deg) translateZ(90px) translate3d(0px, 0px, 0px)' }">{{displayValues[1].name}}</div>
+        <div class="value value1" [ngStyle]="{ transform: 'rotateX(' + (22.5 + deg) + 'deg) translateZ(90px) translate3d(0px, 0px, 0px)' }">{{displayValues[2].name}}</div>
+        <div class="value value1" [ngStyle]="{ transform: 'rotateX(' + (deg) + 'deg) translateZ(90px) translate3d(0px, 0px, 0px)' }">{{displayValues[3].name}}</div>
+        <div class="value value1" [ngStyle]="{ transform: 'rotateX(' + (-22.5 + deg) + 'deg) translateZ(90px) translate3d(0px, 0px, 0px)' }">{{displayValues[4].name}}</div>
+        <div class="value value1" [ngStyle]="{ transform: 'rotateX(' + (-45 + deg) + 'deg) translateZ(90px) translate3d(0px, 0px, 0px)' }">{{displayValues[5].name}}</div>
+        <div class="value value1" [ngStyle]="{ transform: 'rotateX(' + (-67.5 + deg) + 'deg) translateZ(90px) translate3d(0px, 0px, 0px)' }">{{displayValues[6].name}}</div>
+      </div>
   </div>
 </div>

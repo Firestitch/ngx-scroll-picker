@@ -6,7 +6,6 @@
 .scroll-container,
 .scroll-container * {
     box-sizing: border-box;
-    -webkit-user-select: none;
 }
 
 .scroll-container {
@@ -26,6 +25,10 @@
   transform-style : preserve-3d;
   height : 100%;
   padding: 90px 0;
+  position: relative;
+  .values {
+    position: relative;
+  }
 
   .value {
     position: absolute;
@@ -42,34 +45,6 @@
     &.visible {
       background: #fff;
       z-index: 1;
-    }
-
-    &.value1 {
-      transform: rotateX(67.5deg) translateZ(90px) translate3d(0px, 0px, 0px);
-    }
-
-    &.value2 {
-      transform: rotateX(45deg) translateZ(90px) translate3d(0px, 0px, 0px);
-    }
-
-    &.value3 {
-      transform: rotateX(22.5deg) translateZ(90px) translate3d(0px, 0px, 0px);
-    }
-
-    &.value4 {
-      transform: rotateX(0deg) translateZ(90px) translate3d(0px, 0px, 0px);
-    }
-
-    &.value5 {
-      transform: rotateX(-22.5deg) translateZ(90px) translate3d(0px, 0px, 0px);
-    }
-
-    &.value6 {
-      transform: rotateX(-45deg) translateZ(90px) translate3d(0px, 0px, 0px);
-    }
-
-    &.value7 {
-      transform: rotateX(-67.5deg) translateZ(90px) translate3d(0px, 0px, 0px);
     }
     
   }
