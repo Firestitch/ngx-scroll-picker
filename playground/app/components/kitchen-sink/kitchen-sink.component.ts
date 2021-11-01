@@ -16,11 +16,9 @@ export class KitchenSinkComponent {
   public config = {};
   public model = new Date('2015-10-10 15:45');
   public months = [];
-  public years = [];
-  public days = [];
-  public day = 5;
-  public year = 2000;
-  public month;
+  public month = (new Date()).getMonth();
+  public day = (new Date()).getDate();
+  public year = (new Date()).getFullYear();
 
   constructor(
     private exampleComponent: FsExampleComponent,
@@ -31,17 +29,5 @@ export class KitchenSinkComponent {
     for (let i = 0; i < 12; i++) {
       this.months.push({ name: enUS.localize.month(i), value: i + 1 });
     }
-
-    this.month = Object.assign({}, this.months[2]);
-
-    this.days = range(1, 31)
-    .map((day) => {
-      return { name: day, value: day };
-    });
-
-    this.years = range(1900, 2020)
-    .map((year) => {
-      return { name: year, value: year };
-    });
   }
 }

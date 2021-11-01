@@ -7,9 +7,9 @@
     </ng-template>
   </fs-scroll-picker>
 
-  <fs-scroll-picker [values]="days" name="day" [(ngModel)]="day"></fs-scroll-picker>
+  <fs-scroll-picker [valuesMin]="1" [valuesMax]="31" name="day" [(ngModel)]="day"></fs-scroll-picker>
 
-  <fs-scroll-picker [values]="years" name="year" [(ngModel)]="year"></fs-scroll-picker>
+  <fs-scroll-picker [valuesMin]="1900" [valuesMax]="year"  name="year" [(ngModel)]="year"></fs-scroll-picker>
 </div>
 
 <fieldset>
