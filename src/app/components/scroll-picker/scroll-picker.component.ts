@@ -10,8 +10,8 @@ import {
   TemplateRef,
   ViewChild
 } from '@angular/core';
-import { fromEvent, merge, Subject } from 'rxjs';
-import { debounce, debounceTime, takeUntil, tap, throttleTime } from 'rxjs/operators';
+import { fromEvent, interval, merge, Subject } from 'rxjs';
+import { debounce, debounceTime, filter, takeUntil, tap, throttle, throttleTime } from 'rxjs/operators';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { ScrollPickerTemplateComponent } from '../../directives/scroll-picker-template.directive';
 
@@ -44,6 +44,7 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, ControlValueAcc
   public touchData: any = {};
   public valuesEl;
 
+  private _delta = 0;
   private _touchDestroy$: Subject<void>;
   private _destroy$ = new Subject();
   private _onTouched = () => {};
@@ -65,10 +66,14 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, ControlValueAcc
         event.preventDefault();
         event.stopPropagation();        
       }),
-      throttleTime(120),
+      filter((event: any) => {
+        this._delta += Math.abs(event.wheelDeltaY);
+        return this._delta > 10;
+      }), 
       takeUntil(this._destroy$),
     )
     .subscribe((event: UIEvent) => {
+      this._delta = 0;
       this.scroll(event);
     });
 
