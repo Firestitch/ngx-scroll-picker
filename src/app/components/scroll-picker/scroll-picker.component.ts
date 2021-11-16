@@ -158,11 +158,6 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, ControlValueAcc
   }
 
   public scroll(event: any) {
-    const vibrate = window.navigator.vibrate
-    if(vibrate) {
-      window.navigator.vibrate(100);
-    }
-
     if (event.deltaY > 0) {
       this.next();
 
