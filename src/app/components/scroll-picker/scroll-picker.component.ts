@@ -10,8 +10,8 @@ import {
   TemplateRef,
   ViewChild
 } from '@angular/core';
-import { fromEvent, interval, merge, Subject } from 'rxjs';
-import { debounce, debounceTime, filter, takeUntil, tap, throttle, throttleTime } from 'rxjs/operators';
+import { fromEvent, merge, Subject } from 'rxjs';
+import { debounceTime, filter, takeUntil, tap } from 'rxjs/operators';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { ScrollPickerTemplateComponent } from '../../directives/scroll-picker-template.directive';
 
@@ -39,10 +39,13 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, ControlValueAcc
   @Input() valuesMin;
   @Input() valuesMax;
 
+  static readonly maxDelta = 12;
+
   public displayValues = [];
   public value;
   public touchData: any = {};
   public valuesEl;
+  public hideCursor = false;
 
   private _delta = 0;
   private _touchDestroy$: Subject<void>;
@@ -64,11 +67,11 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, ControlValueAcc
     .pipe(
       tap((event: any) => {
         event.preventDefault();
-        event.stopPropagation();        
+        event.stopPropagation(); 
       }),
       filter((event: any) => {
         this._delta += Math.abs(event.wheelDeltaY);
-        return this._delta > 10;
+        return this._delta > ScrollPickerComponent.maxDelta;
       }), 
       takeUntil(this._destroy$),
     )
@@ -142,7 +145,7 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, ControlValueAcc
     this.touchData.startY = this.touchData.startY || endY;
     const moveY = (this.touchData.moveY || 0) + (endY - (this.touchData.startY));
 
-    if (Math.abs(moveY) >= 12) {
+    if (Math.abs(moveY) >= ScrollPickerComponent.maxDelta) {
       if(moveY < 0) {
         this.next();
       } else {
