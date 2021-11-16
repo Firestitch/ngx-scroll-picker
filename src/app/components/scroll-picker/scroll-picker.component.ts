@@ -11,7 +11,7 @@ import {
   ViewChild
 } from '@angular/core';
 import { fromEvent, merge, Subject } from 'rxjs';
-import { takeUntil } from 'rxjs/operators';
+import { debounce, debounceTime, takeUntil, tap, throttleTime } from 'rxjs/operators';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { ScrollPickerTemplateComponent } from '../../directives/scroll-picker-template.directive';
 
@@ -61,6 +61,11 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, ControlValueAcc
 
     fromEvent(this.scrollContainer.nativeElement, 'wheel')
     .pipe(
+      tap((event: any) => {
+        event.preventDefault();
+        event.stopPropagation();        
+      }),
+      throttleTime(120),
       takeUntil(this._destroy$),
     )
     .subscribe((event: UIEvent) => {
@@ -145,9 +150,6 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, ControlValueAcc
   }
 
   public scroll(event: any) {
-    event.preventDefault();
-    event.stopPropagation();
-
     if (event.deltaY > 0) {
       this.next();
 
