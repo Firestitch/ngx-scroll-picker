@@ -1,15 +1,30 @@
 
-<div fxLayout="row" fxLayoutGap="10px">
-
-  <fs-scroll-picker [values]="months" name="month" [(ngModel)]="month">
+<div class="row">
+  <fs-scroll-picker 
+      [values]="months" 
+      name="month" 
+      width="33%"
+      [(ngModel)]="month">
     <ng-template fs-scroll-picker-template let-value="value">
       {{value.name}}
     </ng-template>
   </fs-scroll-picker>
 
-  <fs-scroll-picker [valuesMin]="1" [valuesMax]="31" name="day" [(ngModel)]="day"></fs-scroll-picker>
+  <fs-scroll-picker 
+    width="33%"
+    [valuesMin]="1" 
+    [valuesMax]="dayMax" 
+    name="day" 
+    [(ngModel)]="day">
+  </fs-scroll-picker>
 
-  <fs-scroll-picker [valuesMin]="1900" [valuesMax]="year"  name="year" [(ngModel)]="year"></fs-scroll-picker>
+  <fs-scroll-picker 
+    width="33%"
+    [valuesMin]="1900" 
+    [valuesMax]="yearMax"  
+    name="year" 
+    [(ngModel)]="year">
+  </fs-scroll-picker>
 </div>
 
 <fieldset>

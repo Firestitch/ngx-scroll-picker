@@ -4,9 +4,12 @@ import {
   ContentChild,
   ElementRef,
   forwardRef,
+  HostBinding,
   Input,
+  OnChanges,
   OnDestroy,
   OnInit,
+  SimpleChanges,
   TemplateRef,
   ViewChild
 } from '@angular/core';
@@ -27,7 +30,7 @@ import { ScrollPickerTemplateComponent } from '../../directives/scroll-picker-te
   } ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ScrollPickerComponent implements OnInit, OnDestroy, ControlValueAccessor {
+export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, ControlValueAccessor {
 
   @ContentChild(ScrollPickerTemplateComponent, { read: TemplateRef })
   public template: TemplateRef<ScrollPickerTemplateComponent>;
@@ -38,6 +41,8 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, ControlValueAcc
   @Input() values = [];
   @Input() valuesMin;
   @Input() valuesMax;
+  @Input() 
+  @HostBinding('style.width') width;
 
   static readonly maxDelta = 13;
 
@@ -61,11 +66,7 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, ControlValueAcc
 
   public ngOnInit() {
     this.valuesEl = this.scrollContainer.nativeElement.querySelector('.values');
-    if(this.valuesMin !== undefined && this.valuesMax !== undefined) {
-      for(let i = this.valuesMin; i <= this.valuesMax; i++) {
-        this.values.push({ name: i, value: i });
-      }
-    }
+    this.updateValues();
 
     fromEvent(this.scrollContainer.nativeElement, 'wheel')
     .pipe(
@@ -103,6 +104,24 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, ControlValueAcc
     .subscribe((event: UIEvent) => {
       this.mouseStart(event);
     });      
+  }
+
+  public ngOnChanges(changes: SimpleChanges): void {
+    if(changes.valuesMin?.firstChange === false || changes.valuesMax?.firstChange === false) {
+      if(this.valuesMin !== undefined && this.valuesMax !== undefined) {
+        this.updateValues();
+        this.updateIndex(this.getValueIndex());
+      }
+    }
+  }
+
+  public updateValues() {
+    if(this.valuesMin !== undefined && this.valuesMax !== undefined) {
+      this.values = [];
+      for(let i = this.valuesMin; i <= this.valuesMax; i++) {
+        this.values.push({ name: i, value: i });
+      }
+    }
   }
 
   public writeValue(value: any) {
@@ -249,8 +268,11 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, ControlValueAcc
   }
 
   public updateIndex(index) {
-    this.value = this.values[index] ? this.values[index].value : null;
+    if(!this.values[index]) {
+      index = 0;
+    }
 
+    this.value = this.values[index] ? this.values[index].value : null;
     this._onChange(this.value);
 
     let start = index - 3;
