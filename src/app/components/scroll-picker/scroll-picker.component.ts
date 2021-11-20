@@ -48,8 +48,11 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, ControlValueAcc
 
   private _wheelDelta = 0;
   private _touchDelta = 0;
+  private _mouseDelta = 0;
   private _touchY = 0;
+  private _mouseY = 0;
   private _touchDestroy$: Subject<void>;
+  private _mouseDestroy$: Subject<void>;
   private _destroy$ = new Subject();
   private _onTouched = () => {};
   private _onChange = (value: any) => {};
@@ -83,13 +86,22 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, ControlValueAcc
 
     merge(
       fromEvent(this.scrollContainer.nativeElement, 'touchstart'),
-      fromEvent(this.scrollContainer.nativeElement, 'mousedown')
     )
     .pipe(
       takeUntil(this._destroy$),
     )
     .subscribe((event: UIEvent) => {
       this.touchStart(event);
+    });
+
+    merge(
+      fromEvent(this.scrollContainer.nativeElement, 'mousedown')
+    )
+    .pipe(
+      takeUntil(this._destroy$),
+    )
+    .subscribe((event: UIEvent) => {
+      this.mouseStart(event);
     });      
   }
 
@@ -116,12 +128,10 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, ControlValueAcc
 
     merge(
       fromEvent(document, 'touchmove'),
-      fromEvent(document, 'mousemove')
     )
     .pipe(
       filter((event: any) => {
         this._touchDelta += event.targetTouches[0].pageY - this._touchY;
-        console.log(this._touchDelta);
         this._touchY = event.targetTouches[0].pageY;
         return Math.abs(this._touchDelta) > ScrollPickerComponent.maxDelta;
       }),       
@@ -129,27 +139,70 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, ControlValueAcc
       takeUntil(this._destroy$),
     )
     .subscribe((event: any) => {
-      this.touchMove(event);
+      this.touchMove();
       this._touchDelta = 0;
     }); 
 
     merge(
       fromEvent(document, 'touchend'),
       fromEvent(document, 'touchcancel'),
-      fromEvent(document, 'mouseup')
     )
     .pipe(
       takeUntil(this._touchDestroy$),
       takeUntil(this._destroy$),
     )
-    .subscribe((event: UIEvent) => {
+    .subscribe(() => {
       this._touchDestroy$.next();
       this._touchDestroy$.complete();
       this._touchDestroy$ = null;
     });  
   }
 
-  public touchMove(event) {
+  public mouseStart(event) {
+    event.preventDefault();
+    this._mouseY = event.pageY;
+    this._mouseDestroy$ = new Subject();
+
+    merge(
+      fromEvent(document, 'mousemove')
+    )
+    .pipe(
+      filter((event: MouseEvent) => {
+        this._mouseDelta += event.pageY - this._mouseY;
+        this._mouseY = event.pageY;
+        return Math.abs(this._mouseDelta) > ScrollPickerComponent.maxDelta;          
+      }),       
+      takeUntil(this._mouseDestroy$),
+      takeUntil(this._destroy$),
+    )
+    .subscribe(() => {
+      this.mouseMove();
+      this._mouseDelta = 0;
+    }); 
+
+    merge(
+      fromEvent(document, 'mouseup')
+    )
+    .pipe(
+      takeUntil(this._mouseDestroy$),
+      takeUntil(this._destroy$),
+    )
+    .subscribe(() => {
+      this._mouseDestroy$.next();
+      this._mouseDestroy$.complete();
+      this._mouseDestroy$ = null;
+    });  
+  }
+  
+  public mouseMove() {
+    if(this._mouseDelta < 0) {
+      this.next();
+    } else {
+      this.prev();
+    }
+  }
+
+  public touchMove() {
     if(this._touchDelta < 0) {
       this.next();
     } else {
@@ -225,7 +278,19 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, ControlValueAcc
     this._cdRef.markForCheck();
   }
 
-  public ngOnDestroy() {
+  public valueClick(index): void {
+    if(index > 0) {
+      for(let i=0; i < Math.abs(index);i++) {
+        this.next();
+      }
+    } else {
+      for(let i=0; i < Math.abs(index);i++) {
+        this.prev();
+      }
+    }
+  }
+
+  public ngOnDestroy(): void {
     this._destroy$.next();
     this._destroy$.complete();
   }
