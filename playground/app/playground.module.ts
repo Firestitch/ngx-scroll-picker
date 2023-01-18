@@ -17,6 +17,7 @@ import {
 import { AppComponent } from './app.component';
 import { KitchenSinkConfigureComponent } from './components/kitchen-sink-configure';
 import { FsScrollPickerModule } from 'src/app/fs-scroll-picker.module';
+import { DisabledComponent } from './components';
 
 const routes: Routes = [
   { path: '', component: ExamplesComponent },
@@ -36,14 +37,12 @@ const routes: Routes = [
     ToastrModule.forRoot({ preventDuplicates: true }),
     RouterModule.forRoot(routes, { relativeLinkResolution: 'legacy' }),
   ],
-  entryComponents: [
-    KitchenSinkConfigureComponent
-  ],
   declarations: [
     AppComponent,
     ExamplesComponent,
     KitchenSinkComponent,
-    KitchenSinkConfigureComponent
+    KitchenSinkConfigureComponent,
+    DisabledComponent
   ],
 })
 export class PlaygroundModule {

@@ -15,7 +15,7 @@ import {
 } from '@angular/core';
 import { fromEvent, merge, Subject } from 'rxjs';
 import { filter, takeUntil, tap } from 'rxjs/operators';
-import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
+import { AbstractControl, ControlValueAccessor, NG_VALIDATORS, NG_VALUE_ACCESSOR, Validators } from '@angular/forms';
 import { ScrollPickerTemplateComponent } from '../../directives/scroll-picker-template.directive';
 
 
@@ -23,14 +23,21 @@ import { ScrollPickerTemplateComponent } from '../../directives/scroll-picker-te
   selector: 'fs-scroll-picker',
   templateUrl: './scroll-picker.component.html',
   styleUrls: ['./scroll-picker.component.scss'],
-  providers: [ {
-    provide: NG_VALUE_ACCESSOR,
-    useExisting: forwardRef(() => ScrollPickerComponent),
-    multi: true
-  } ],
+  providers: [ 
+    {
+      provide: NG_VALUE_ACCESSOR,
+      useExisting: forwardRef(() => ScrollPickerComponent),
+      multi: true
+    },
+    {
+      provide: NG_VALIDATORS,
+      useExisting: forwardRef(() => ScrollPickerComponent),
+      multi: true
+    } 
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, ControlValueAccessor {
+export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, ControlValueAccessor, Validators {
 
   @ContentChild(ScrollPickerTemplateComponent, { read: TemplateRef })
   public template: TemplateRef<ScrollPickerTemplateComponent>;
@@ -38,9 +45,11 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
   @ViewChild('scrollContainer', { static: true }) 
   public scrollContainer: ElementRef;
 
-  @Input() values = [];
+  @Input() values: { name: string, value: any }[] = [];
   @Input() valuesMin;
   @Input() valuesMax;
+  @Input() disabledMin;
+  @Input() disabledMax;
   @Input() 
   @HostBinding('style.width') width;
 
@@ -50,6 +59,7 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
   public value;
   public valuesEl;
   public hideCursor = false;
+  public disabled = {};
 
   private _wheelDelta = 0;
   private _touchDelta = 0;
@@ -62,11 +72,14 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
   private _onTouched = () => {};
   private _onChange = (value: any) => {};
 
-  constructor(private _cdRef: ChangeDetectorRef) {}
+  constructor(
+    private _cdRef: ChangeDetectorRef,
+  ) {}
 
-  public ngOnInit() {
+  public ngOnInit(): void {
     this.valuesEl = this.scrollContainer.nativeElement.querySelector('.values');
     this.updateValues();
+    this.updateDisabled();
 
     fromEvent(this.scrollContainer.nativeElement, 'wheel')
     .pipe(
@@ -113,9 +126,40 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
         this.updateIndex(this.getValueIndex());
       }
     }
+
+    if(changes.disabledMin?.firstChange === false || changes.disabledMax?.firstChange === false) {
+      this.updateDisabled();
+    }
   }
 
-  public updateValues() {
+  public validate(control: AbstractControl): { [key: string]: any } | null { 
+    if(this.valueDisabled) {
+      return {
+        disabled: 'Value is disabled',
+      };
+    }
+
+    return null; 
+  }
+
+  public get valueDisabled(): boolean {
+    return this.disabled[this.value];
+  }
+
+  public updateDisabled(): void {
+    this.disabled = {};
+    this.values
+      .forEach((item) => {
+        if(
+          (this.disabledMin !== undefined && item.value <= this.disabledMin) ||
+          (this.disabledMax !== undefined && item.value >= this.disabledMax)
+        ) {
+          this.disabled[item.value] = true;
+        }
+      });
+  }
+
+  public updateValues(): void {
     if(this.valuesMin !== undefined && this.valuesMax !== undefined) {
       this.values = [];
       for(let i = this.valuesMin; i <= this.valuesMax; i++) {

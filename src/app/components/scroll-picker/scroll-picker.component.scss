@@ -36,6 +36,38 @@
     visibility: visible;
     z-index: 0;
     transition: transform 40ms ease 0s;
+
+    &.disabled {
+      opacity: .15;
+    }
+
+    &.value0 {
+      transform: rotateX(67.5deg) translateZ(90px) translate3d(0px, 0px, 0px);
+    }
+
+    &.value1 {
+      transform: rotateX(45deg) translateZ(90px) translate3d(0px, 0px, 0px);
+    }
+
+    &.value2 {
+      transform: rotateX(22.5deg) translateZ(90px) translate3d(0px, 0px, 0px);
+    }
+
+    &.value3 {
+      transform: rotateX(0deg) translateZ(90px) translate3d(0px, 0px, 0px);
+    }
+
+    &.value4 {
+      transform: rotateX(-22.5deg) translateZ(90px) translate3d(0px, 0px, 0px);
+    }
+
+    &.value5 {
+      transform: rotateX(-45deg) translateZ(90px) translate3d(0px, 0px, 0px);
+    }
+
+    &.value6 {
+      transform: rotateX(-67.5deg) translateZ(90px) translate3d(0px, 0px, 0px);
+    }
   }
 }
 
@@ -55,14 +87,14 @@
 }
 
 .bottom {
-    position: absolute;
-    bottom: 0;
-    z-index: 2;
-    background: rgba(256, 256, 256, 0.6);
-    border-top: 1px solid #e2e2e2;
-    width: 100%;
-    transform: translateZ(0px);
-    pointer-events: none
+  position: absolute;
+  bottom: 0;
+  z-index: 2;
+  background: rgba(256, 256, 256, 0.6);
+  border-top: 1px solid #e2e2e2;
+  width: 100%;
+  transform: translateZ(0px);
+  pointer-events: none
 }
 
 .beginning {

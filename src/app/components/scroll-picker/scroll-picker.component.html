@@ -6,44 +6,44 @@
   <div class="scroller">
       <div class="values">
         <div 
-            class="value value1" 
+            class="value value0" 
             (click)="valueClick(-3)"
-            [ngStyle]="{ transform: 'rotateX(67.5deg) translateZ(90px) translate3d(0px, 0px, 0px)' }">
+            [ngClass]="{ disabled: disabled[displayValues[0]?.value] }">
           {{displayValues[0]?.name}}
         </div>
         <div 
             class="value value1" 
             (click)="valueClick(-2)"
-            [ngStyle]="{ transform: 'rotateX(45deg) translateZ(90px) translate3d(0px, 0px, 0px)' }">
+            [ngClass]="{ disabled: disabled[displayValues[1]?.value] }">
           {{displayValues[1]?.name}}
         </div>
         <div 
-            class="value value1" 
+            class="value value2" 
             (click)="valueClick(-1)"
-            [ngStyle]="{ transform: 'rotateX(22.5deg) translateZ(90px) translate3d(0px, 0px, 0px)' }">
+            [ngClass]="{ disabled: disabled[displayValues[2]?.value] }">
           {{displayValues[2]?.name}}
         </div>
         <div 
-            class="value value1" 
-            [ngStyle]="{ transform: 'rotateX(0deg) translateZ(90px) translate3d(0px, 0px, 0px)' }">
+            class="value value3" 
+            [ngClass]="{ disabled: disabled[displayValues[3]?.value] }">
           {{displayValues[3]?.name}}
         </div>
         <div 
-            class="value value1" 
+            class="value value4" 
             (click)="valueClick(1)"
-            [ngStyle]="{ transform: 'rotateX(-22.5deg) translateZ(90px) translate3d(0px, 0px, 0px)' }">
+            [ngClass]="{ disabled: disabled[displayValues[4]?.value] }">
           {{displayValues[4]?.name}}
         </div>
         <div 
-            class="value value1" 
+            class="value value5" 
             (click)="valueClick(2)"
-            [ngStyle]="{ transform: 'rotateX(-45deg) translateZ(90px) translate3d(0px, 0px, 0px)' }">
+            [ngClass]="{ disabled: disabled[displayValues[5]?.value] }">
           {{displayValues[5]?.name}}
         </div>
         <div 
-            class="value value1" 
+            class="value value6" 
             (click)="valueClick(3)"
-            [ngStyle]="{ transform: 'rotateX(-67.5deg) translateZ(90px) translate3d(0px, 0px, 0px)' }">
+            [ngClass]="{ disabled: disabled[displayValues[6]?.value] }">
           {{displayValues[6]?.name}}
         </div>
       </div>

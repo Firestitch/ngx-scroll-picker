@@ -1,0 +1,24 @@
+<form #form="ngForm">
+  <fs-scroll-picker 
+      [values]="months" 
+      name="month" 
+      [disabledMin]="3"
+      [disabledMax]="10"
+      width="33%"
+      [(ngModel)]="month">
+    <ng-template fs-scroll-picker-template let-value="value">
+      {{value.name}}
+    </ng-template>
+  </fs-scroll-picker>
+
+  <fieldset>
+    <legend>Value</legend>
+    {{month}}
+  </fieldset>
+    
+  <fieldset *ngIf="form.form.controls.month?.errors">
+    <legend>Validation Errors</legend>
+    {{form.form.controls.month?.errors|json}}
+  </fieldset>
+
+</form>
