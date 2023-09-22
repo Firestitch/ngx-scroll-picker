@@ -1,15 +1,10 @@
 import { Component } from '@angular/core';
-import { KitchenSinkConfigureComponent } from '../kitchen-sink-configure';
-import { FsExampleComponent } from '@firestitch/example';
-import { FsMessage } from '@firestitch/message';
-import { enUS } from 'date-fns/locale'
-import { range } from 'lodash-es';
 
 
 @Component({
   selector: 'kitchen-sink',
   templateUrl: 'kitchen-sink.component.html',
-  styleUrls: ['kitchen-sink.component.scss']
+  styleUrls: ['kitchen-sink.component.scss'],
 })
 export class KitchenSinkComponent {
 
@@ -22,14 +17,4 @@ export class KitchenSinkComponent {
   public year = (new Date()).getFullYear();
   public yearMax = (new Date()).getFullYear();
 
-  constructor(
-    private exampleComponent: FsExampleComponent,
-    private message: FsMessage
-  ) {
-    exampleComponent.setConfigureComponent(KitchenSinkConfigureComponent, { config: this.config });
-
-    for (let i = 0; i < 12; i++) {
-      this.months.push({ name: enUS.localize.month(i), value: i + 1 });
-    }
-  }
 }
