@@ -215,7 +215,7 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
       takeUntil(this._destroy$),
     )
     .subscribe(() => {
-      this._touchDestroy$.next();
+      this._touchDestroy$.next(null);
       this._touchDestroy$.complete();
       this._touchDestroy$ = null;
     });  
@@ -251,7 +251,7 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
       takeUntil(this._destroy$),
     )
     .subscribe(() => {
-      this._mouseDestroy$.next();
+      this._mouseDestroy$.next(null);
       this._mouseDestroy$.complete();
       this._mouseDestroy$ = null;
     });  
@@ -259,7 +259,7 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
   
   public mouseMove() {
     if(this._mouseDelta < 0) {
-      this.next();
+      this.next(null);
     } else {
       this.prev();
     }
@@ -267,7 +267,7 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
 
   public touchMove() {
     if(this._touchDelta < 0) {
-      this.next();
+      this.next(null);
     } else {
       this.prev();
     }
@@ -275,7 +275,7 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
 
   public scroll(event: any) {
     if (event.deltaY > 0) {
-      this.next();
+      this.next(null);
 
     } else {
       this.prev();
@@ -293,7 +293,7 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
     this.updateIndex(index);    
   }
 
-  public next() {
+  public.next(null) {
     let index = this.getValueIndex();
 
     if(index === (this.values.length - 1)) {
@@ -347,7 +347,7 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
   public valueClick(index): void {
     if(index > 0) {
       for(let i=0; i < Math.abs(index);i++) {
-        this.next();
+        this.next(null);
       }
     } else {
       for(let i=0; i < Math.abs(index);i++) {
@@ -357,7 +357,7 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
   }
 
   public ngOnDestroy(): void {
-    this._destroy$.next();
+    this._destroy$.next(null);
     this._destroy$.complete();
   }
 }
