@@ -259,7 +259,7 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
   
   public mouseMove() {
     if(this._mouseDelta < 0) {
-      this.next(null);
+      this.next();
     } else {
       this.prev();
     }
@@ -267,7 +267,7 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
 
   public touchMove() {
     if(this._touchDelta < 0) {
-      this.next(null);
+      this.next();
     } else {
       this.prev();
     }
@@ -275,7 +275,7 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
 
   public scroll(event: any) {
     if (event.deltaY > 0) {
-      this.next(null);
+      this.next();
 
     } else {
       this.prev();
@@ -293,7 +293,7 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
     this.updateIndex(index);    
   }
 
-  public.next(null) {
+  public next() {
     let index = this.getValueIndex();
 
     if(index === (this.values.length - 1)) {
@@ -347,7 +347,7 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
   public valueClick(index): void {
     if(index > 0) {
       for(let i=0; i < Math.abs(index);i++) {
-        this.next(null);
+        this.next();
       }
     } else {
       for(let i=0; i < Math.abs(index);i++) {
