@@ -1,18 +1,4 @@
-import {
-  ChangeDetectionStrategy, ChangeDetectorRef,
-  Component,
-  ContentChild,
-  ElementRef,
-  forwardRef,
-  HostBinding,
-  Input,
-  OnChanges,
-  OnDestroy,
-  OnInit,
-  SimpleChanges,
-  TemplateRef,
-  ViewChild
-} from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, ContentChild, ElementRef, forwardRef, HostBinding, Input, OnChanges, OnDestroy, OnInit, SimpleChanges, TemplateRef, ViewChild, inject } from '@angular/core';
 import { fromEvent, merge, Subject } from 'rxjs';
 import { filter, takeUntil, tap } from 'rxjs/operators';
 import { AbstractControl, ControlValueAccessor, NG_VALIDATORS, NG_VALUE_ACCESSOR, Validators } from '@angular/forms';
@@ -41,6 +27,8 @@ import { NgClass } from '@angular/common';
     imports: [NgClass],
 })
 export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, ControlValueAccessor, Validators {
+  private _cdRef = inject(ChangeDetectorRef);
+
 
   @ContentChild(ScrollPickerTemplateComponent, { read: TemplateRef })
   public template: TemplateRef<ScrollPickerTemplateComponent>;
@@ -74,10 +62,6 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
   private _destroy$ = new Subject();
   private _onTouched = () => {};
   private _onChange = (value: any) => {};
-
-  constructor(
-    private _cdRef: ChangeDetectorRef,
-  ) {}
 
   public ngOnInit(): void {
     this.valuesEl = this.scrollContainer.nativeElement.querySelector('.values');
