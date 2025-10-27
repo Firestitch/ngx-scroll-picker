@@ -1,10 +1,19 @@
 import { Component } from '@angular/core';
+import { ScrollPickerComponent } from '../../../../src/app/components/scroll-picker/scroll-picker.component';
+import { FormsModule } from '@angular/forms';
+import { ScrollPickerTemplateComponent } from '../../../../src/app/directives/scroll-picker-template.directive';
 
 
 @Component({
-  selector: 'kitchen-sink',
-  templateUrl: 'kitchen-sink.component.html',
-  styleUrls: ['kitchen-sink.component.scss'],
+    selector: 'kitchen-sink',
+    templateUrl: 'kitchen-sink.component.html',
+    styleUrls: ['kitchen-sink.component.scss'],
+    standalone: true,
+    imports: [
+        ScrollPickerComponent,
+        FormsModule,
+        ScrollPickerTemplateComponent,
+    ],
 })
 export class KitchenSinkComponent {
 

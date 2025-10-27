@@ -17,25 +17,28 @@ import { fromEvent, merge, Subject } from 'rxjs';
 import { filter, takeUntil, tap } from 'rxjs/operators';
 import { AbstractControl, ControlValueAccessor, NG_VALIDATORS, NG_VALUE_ACCESSOR, Validators } from '@angular/forms';
 import { ScrollPickerTemplateComponent } from '../../directives/scroll-picker-template.directive';
+import { NgClass } from '@angular/common';
 
 
 @Component({
-  selector: 'fs-scroll-picker',
-  templateUrl: './scroll-picker.component.html',
-  styleUrls: ['./scroll-picker.component.scss'],
-  providers: [ 
-    {
-      provide: NG_VALUE_ACCESSOR,
-      useExisting: forwardRef(() => ScrollPickerComponent),
-      multi: true
-    },
-    {
-      provide: NG_VALIDATORS,
-      useExisting: forwardRef(() => ScrollPickerComponent),
-      multi: true
-    } 
-  ],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'fs-scroll-picker',
+    templateUrl: './scroll-picker.component.html',
+    styleUrls: ['./scroll-picker.component.scss'],
+    providers: [
+        {
+            provide: NG_VALUE_ACCESSOR,
+            useExisting: forwardRef(() => ScrollPickerComponent),
+            multi: true
+        },
+        {
+            provide: NG_VALIDATORS,
+            useExisting: forwardRef(() => ScrollPickerComponent),
+            multi: true
+        }
+    ],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: true,
+    imports: [NgClass],
 })
 export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, ControlValueAccessor, Validators {
 
