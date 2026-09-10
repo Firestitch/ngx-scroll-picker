@@ -166,3 +166,48 @@ export function pruneSamples(samples: Sample[], now: number): Sample[] {
 
   return index <= 0 ? samples : samples.slice(index);
 }
+
+/**
+ * Consecutive non-growing wheel deltas that mark the start of a momentum phase.
+ *
+ * macOS keeps synthesizing wheel events after the fingers leave the trackpad,
+ * with deltas that decay smoothly towards zero. The decay per event is gentle -
+ * a long flick loses only a fraction of a percent per event - so what
+ * distinguishes it is not the size of each drop but how many drops arrive in a
+ * row without a single increase. A finger on glass never manages that: hand
+ * tremor puts a larger delta in the run every few events.
+ *
+ * Twelve events is roughly 200ms at the ~60Hz macOS emits, long enough that a
+ * steadily-slowing finger has not yet produced an unbroken run of that length.
+ */
+export const WheelMomentumRun = 12;
+
+/**
+ * A delta counts as non-growing when it is at most this fraction of the largest
+ * delta seen so far in the run. Slightly above 1 to absorb the small ripples in
+ * the OS curve without breaking the run, while any real re-acceleration - a
+ * finger pushing again - is well clear of it and resets.
+ */
+export const WheelMomentumDecay = 1.02;
+
+/**
+ * Longest mean gap (ms) between events that can still be OS momentum.
+ *
+ * macOS drives the momentum tail off the display refresh, so its events arrive
+ * about every 16ms and never pause. A hand moving on the glass produces a
+ * sparser, less regular stream. Requiring the decaying run to also be this
+ * dense is what separates real momentum from a steady deliberate scroll, which
+ * can otherwise look monotonic for a long stretch without ever being momentum.
+ */
+export const WheelMomentumMaxGap = 24;
+
+/**
+ * Hard ceiling (ms) on how long a wheel gesture may stay in `drag`.
+ *
+ * The backstop for the case momentum detection misses: a device or browser
+ * whose deltas do not decay in the shape we look for, or a genuine drag held
+ * for an implausibly long time. Without it a stream of wheel events that never
+ * goes idle keeps resetting the idle timer and the drum drifts with no snap
+ * and no settle for as long as the events keep coming.
+ */
+export const WheelGestureMaxDuration = 1200;

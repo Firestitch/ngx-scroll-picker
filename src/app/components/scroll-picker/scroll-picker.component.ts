@@ -19,7 +19,11 @@ import {
   TapSlop,
   VelocitySampleWindow,
   VisibleRadius,
+  WheelGestureMaxDuration,
   WheelIdleTimeout,
+  WheelMomentumDecay,
+  WheelMomentumMaxGap,
+  WheelMomentumRun,
   WheelNotchThreshold,
   decayFor,
   projectFling,
@@ -148,6 +152,21 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
 
   private _wheelTimer: any = null;
 
+  /**
+   * Wheel gesture state. A trackpad has no equivalent of pointerup, so the end
+   * of the gesture has to be inferred - see `_onWheel`.
+   */
+  private _wheelActive = false;
+  private _wheelStartTime = 0;
+  private _wheelLastDelta = 0;
+  private _wheelPeakDelta = 0;
+  private _wheelDecayRun = 0;
+  private _wheelRunStart = 0;
+
+  /** True while the OS momentum tail of a handed-off gesture is being ignored. */
+  private _wheelMomentum = false;
+  private _wheelSamples: Sample[] = [];
+
   /** Height of one item in px, measured from the rendered element. */
   private _itemHeight = 34;
 
@@ -260,6 +279,7 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
   public ngOnDestroy(): void {
     this._cancelFrames();
     this._clearWheelTimer();
+    this._endWheelGesture();
     this._releaseCapture(this._pointerId);
     this._pointerId = null;
     this._detachPointerListeners();
@@ -304,28 +324,177 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
     if (Math.abs(event.deltaY) >= WheelNotchThreshold) {
       // A notched mouse wheel. One notch moves exactly one item and settles
       // there, so a wheel click always lands on a value.
+      this._endWheelGesture();
       this._clearWheelTimer();
       this._settleTo(this._snapBase() + Math.sign(event.deltaY));
 
       return;
     }
 
-    // A trackpad. Treat it as a continuous drag, then snap once it goes quiet.
+    // A trackpad. There is no wheel equivalent of pointerup, so the end of the
+    // gesture is inferred rather than reported - see `_isWheelMomentum`.
+    const delta = this._normalizeWheelDelta(event);
+
+    // The tail of a stream already handed off to the fling. macOS keeps sending
+    // these for up to a second or so after the fling has started; letting them
+    // open a fresh gesture would drop the drum back into `drag` and cancel the
+    // fling, which is the drift this whole path exists to prevent. They are
+    // swallowed until the stream goes quiet - `_armWheelIdle` reopens for the
+    // next real gesture, and a pointerdown or a notch clears it immediately.
+    if (this._wheelMomentum) {
+      this._armWheelIdle();
+
+      return;
+    }
+
+    if (!this._wheelActive) {
+      this._startWheelGesture(event.timeStamp);
+    }
+
+    // Once the OS is driving, its deltas are discarded and our own fling takes
+    // over with the velocity the fingers actually left behind. Continuing to
+    // integrate them instead is what let the drum drift for the whole momentum
+    // phase - macOS emits those events for a second or more, every one of them
+    // resetting the idle timer, so the snap that ends the gesture never ran and
+    // the drum never came to rest on a value.
+    if (this._isWheelMomentum(delta, event.timeStamp)) {
+      // Set after the fling: `_flingFromWheel` clears the gesture, which resets
+      // this flag, so raising it first would be undone immediately.
+      this._flingFromWheel();
+      this._wheelMomentum = true;
+      this._armWheelIdle();
+
+      return;
+    }
+
     this._cancelFrame();
     this._mode = 'drag';
     this._velocity = 0;
 
-    this._rawOffset += this._normalizeWheelDelta(event);
+    this._rawOffset += delta;
     this._offset = this._applyBounds(this._rawOffset);
+
+    this._wheelSamples = pruneSamples(
+      [...this._wheelSamples, { time: event.timeStamp, position: this._offset }],
+      event.timeStamp,
+    );
 
     this._commitFromOffset();
     this._scheduleRender();
 
+    this._armWheelIdle();
+  }
+
+  /**
+   * (Re)arms the quiet-stream timer. While a gesture is live this is what ends
+   * it; while its momentum tail is being swallowed this is what decides the
+   * tail is over, so the next scroll starts a gesture of its own.
+   */
+  private _armWheelIdle(): void {
     this._clearWheelTimer();
     this._wheelTimer = setTimeout(() => {
       this._wheelTimer = null;
-      this._settleTo(Math.round(this._offset));
+
+      if (this._wheelMomentum) {
+        this._wheelMomentum = false;
+
+        return;
+      }
+
+      this._flingFromWheel();
     }, WheelIdleTimeout);
+  }
+
+  private _startWheelGesture(time: number): void {
+    this._wheelActive = true;
+    this._wheelStartTime = time;
+    this._wheelLastDelta = 0;
+    this._wheelPeakDelta = 0;
+    this._wheelDecayRun = 0;
+    this._wheelRunStart = 0;
+    this._wheelSamples = [];
+  }
+
+  private _endWheelGesture(): void {
+    this._wheelActive = false;
+    this._wheelMomentum = false;
+    this._wheelLastDelta = 0;
+    this._wheelPeakDelta = 0;
+    this._wheelDecayRun = 0;
+    this._wheelRunStart = 0;
+    this._wheelSamples = [];
+  }
+
+  /**
+   * Whether the OS has taken over the gesture and is now synthesizing events.
+   *
+   * macOS keeps emitting wheel events after the fingers lift, with deltas that
+   * decay smoothly towards zero. A finger on glass never decays that cleanly,
+   * so a run of consecutive shrinking deltas arriving at display rate means the
+   * hand is off - at which point the gesture is over as far as the drum is
+   * concerned. Both halves are needed: a deliberate slow scroll can look
+   * monotonic for a long stretch, and only its sparser timing gives it away.
+   *
+   * The elapsed-time test is the backstop for anything whose momentum does not
+   * decay in that shape, so no wheel gesture can hold the drum in `drag`
+   * indefinitely however unusual the device.
+   */
+  private _isWheelMomentum(delta: number, time: number): boolean {
+    const magnitude = Math.abs(delta);
+
+    // Direction reversals are always fresh intent, never OS momentum.
+    const reversed = this._wheelLastDelta && Math.sign(delta) !== Math.sign(this._wheelLastDelta);
+
+    // Measured against the peak of the current run rather than the previous
+    // event. Momentum decays gently enough that consecutive deltas are nearly
+    // equal, so a per-event comparison cannot separate the OS curve from noise;
+    // against the running peak, a decaying stream stays under the bar for as
+    // long as it decays, while a finger re-accelerating clears it at once.
+    if (reversed || magnitude > this._wheelPeakDelta * WheelMomentumDecay) {
+      this._wheelDecayRun = 0;
+      this._wheelPeakDelta = magnitude;
+    } else {
+      this._wheelDecayRun++;
+
+      // The peak is the true maximum of the run and never decays. Letting it
+      // sink towards the current delta would lower the bar under a jittery
+      // finger until ordinary scrolling looked monotonic and tripped the
+      // handoff mid-gesture.
+      this._wheelPeakDelta = Math.max(magnitude, this._wheelPeakDelta);
+    }
+
+    // Mean gap across the run so far. Momentum is display-driven and dense; a
+    // hand on the glass is sparser and more irregular.
+    const gap = this._wheelDecayRun
+      ? (time - this._wheelRunStart) / this._wheelDecayRun
+      : 0;
+
+    if (this._wheelDecayRun === 1) {
+      this._wheelRunStart = time;
+    }
+
+    this._wheelLastDelta = delta;
+
+    return (this._wheelDecayRun >= WheelMomentumRun && gap <= WheelMomentumMaxGap) ||
+      time - this._wheelStartTime >= WheelGestureMaxDuration;
+  }
+
+  /**
+   * Ends a trackpad gesture the way a finger lifting ends a drag: fling with
+   * the velocity measured over the last few events, or settle where it stands.
+   */
+  private _flingFromWheel(): void {
+    const samples = this._wheelSamples;
+    const velocity = velocityFrom(samples);
+
+    this._endWheelGesture();
+    this._clearWheelTimer();
+
+    if (this._isOverscrolled() || Math.abs(velocity) < MinVelocity) {
+      this._settleTo(Math.round(this._offset));
+    } else {
+      this._startFling(velocity);
+    }
   }
 
   /** Converts a wheel delta into items, accounting for the event's unit mode. */
@@ -376,6 +545,7 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
     // Grabbing a moving drum stops it dead, like catching a spinning wheel.
     this._cancelFrame();
     this._clearWheelTimer();
+    this._endWheelGesture();
 
     this._pointerId = event.pointerId;
     this._pointerStartY = event.clientY;
@@ -594,6 +764,7 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
   private _jumpTo(offset: number): void {
     this._cancelFrames();
     this._clearWheelTimer();
+    this._endWheelGesture();
 
     this._mode = 'idle';
     this._velocity = 0;
