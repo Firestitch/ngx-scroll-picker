@@ -276,9 +276,6 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
       this._on(el, 'wheel', this._onWheel, { passive: false }),
       this._on(el, 'pointerdown', this._onPointerDown),
       this._on(el, 'keydown', this._onKeyDown),
-      // touch-action in CSS handles most browsers; this stops iOS Safari from
-      // panning the page while a drag is in progress.
-      this._on(el, 'touchmove', (event: TouchEvent) => event.preventDefault(), { passive: false }),
     );
   }
 
@@ -354,8 +351,16 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
   // ---------------------------------------------------------------------------
 
   private _onPointerDown(event: PointerEvent): void {
-    if (this._pointerId !== null || !this.values.length) {
+    if (!this.values.length) {
       return;
+    }
+
+    // A fresh press while a gesture is still open means the previous one never
+    // received its pointerup - iOS drops it when a system gesture interrupts
+    // the touch. Retire the stale gesture rather than ignoring the new press,
+    // which would otherwise leave the drum tracking a pointer that is gone.
+    if (this._pointerId !== null) {
+      this._endGesture();
     }
 
     // Grabbing a moving drum stops it dead, like catching a spinning wheel.
@@ -374,9 +379,23 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
       this._on(window, 'pointermove', this._onPointerMove),
       this._on(window, 'pointerup', this._onPointerUp),
       this._on(window, 'pointercancel', this._onPointerUp),
+      // Fires when the browser takes the pointer away mid-gesture (a system
+      // edge-swipe, a context menu). Without it that capture loss would leave
+      // the gesture open with no further events coming.
+      this._on(window, 'lostpointercapture', this._onPointerUp),
     ];
 
-    event.preventDefault();
+    // Deliberately not preventDefault()ed for touch. Suppressing the default on
+    // a touch-derived pointerdown stops iOS Safari from emitting the pointerup
+    // that ends the gesture, which strands `_pointerId` set and the window
+    // listeners attached - the drum then keeps tracking every later touch and
+    // never stops. Native panning is suppressed by `touch-action: none` in the
+    // stylesheet instead, which is the mechanism designed for this and costs no
+    // events. Mouse still needs the default suppressed, or the drag turns into
+    // a text/image selection.
+    if (event.pointerType === 'mouse') {
+      event.preventDefault();
+    }
   }
 
   private _onPointerMove(event: PointerEvent): void {
@@ -405,6 +424,15 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
 
     this._commitFromOffset();
     this._scheduleRender();
+  }
+
+  /** Clears gesture state and the window listeners, leaving the drum where it is. */
+  private _endGesture(): void {
+    this._pointerId = null;
+    this._pointerMoved = false;
+    this._samples = [];
+    this._mode = 'idle';
+    this._detachPointerListeners();
   }
 
   private _onPointerUp(event: PointerEvent): void {
