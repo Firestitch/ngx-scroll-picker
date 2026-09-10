@@ -1,102 +1,182 @@
+:host {
+  // Theming hooks. Override any of these on the host element.
+  --fs-scroll-picker-height: 180px;
+  --fs-scroll-picker-item-height: 34px;
+  --fs-scroll-picker-font-size: 20px;
+  --fs-scroll-picker-color: #000;
+  --fs-scroll-picker-background: #fff;
+  --fs-scroll-picker-selection-background: rgba(120, 120, 128, 0.12);
+  --fs-scroll-picker-selection-radius: 8px;
+  --fs-scroll-picker-disabled-opacity: 0.25;
+
+  // Breathing room on each side of the widest label. This is what keeps the
+  // selected row from being clipped: rows are drawn at up to scale(1), and a
+  // box sized to fit the text exactly has no room for a row that renders at
+  // full size, let alone for glyph overhang (italics, accents, "Q" tails).
+  --fs-scroll-picker-item-padding: 8px;
+
+  display: inline-block;
+
+  // Aligned by the box, not by whatever text happens to sit inside it. An
+  // inline-block otherwise aligns on its last line box's baseline, which makes
+  // the control's vertical position depend on its contents.
+  vertical-align: middle;
+}
+
 .scroll-container,
 .scroll-container * {
   box-sizing: border-box;
 }
 
 .scroll-container {
-  text-align: center;
   position: relative;
-  height: 180px;
-  line-height: 30px;
   width: 100%;
-  font-size: 20px;
-  cursor: pointer;
+  height: var(--fs-scroll-picker-height);
+  font-size: var(--fs-scroll-picker-font-size);
+  line-height: var(--fs-scroll-picker-item-height);
+  text-align: center;
+
+  // Both axes clipped. The drum renders rows above and below the visible window
+  // and those have to be cut off; overflow-x cannot be left visible to expose a
+  // too-narrow column, because `visible` paired with a hidden y computes to
+  // `auto` and puts a real scrollbar under the drum. Keeping text off this
+  // boundary is therefore the sizer's job, via --fs-scroll-picker-item-padding.
+  overflow: hidden;
+
+  cursor: grab;
+  outline: none;
+
+  // The drag handler owns vertical gestures; the browser must not also pan.
+  touch-action: none;
+
+  // A drag across the wheel should move the drum, not select the numbers.
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+
+  &:active {
+    cursor: grabbing;
+  }
+
+  &:focus-visible .selection {
+    box-shadow: 0 0 0 2px rgba(10, 132, 255, 0.6);
+  }
+}
+
+// Sets the drum's width from the real rendered text. Laid out in normal flow
+// but pushed out of sight, so it contributes a measurement and nothing else -
+// the visible rows are all absolutely positioned and measure nothing.
+//
+// The padding is part of the measurement rather than something applied to the
+// visible rows: it has to widen the column itself, so the drum ends up wider
+// than its longest label instead of exactly as wide as it.
+.sizer {
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  pointer-events: none;
+  padding: 0 var(--fs-scroll-picker-item-padding);
+
+  // border-box is set on everything in the container; here it would fold the
+  // padding back into the text width and measure nothing extra.
+  box-sizing: content-box;
+}
+
+// Each candidate on its own line, so the widest one sets the width rather than
+// them running together into a single much wider line.
+.sizer-row {
+  white-space: nowrap;
 }
 
 .scroller {
-  transition : transform 100ms ease;
-  transform : translateZ(-90px) rotateX(0deg);
-  transform-style : preserve-3d;
-  height : 100%;
-  padding: 75px 0;
-  position: relative;
-
-  .values {
-    position: relative;
-  }
-
-  .value {
-    position: absolute;
-    backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
-    width : 100%;
-    color : black;
-    transform-origin: 50% 50%;
-    transform-style : preserve-3d;
-    visibility: visible;
-    z-index: 0;
-    transition: transform 40ms ease 0s;
-
-    &.disabled {
-      opacity: .15;
-    }
-
-    &.value0 {
-      transform: rotateX(67.5deg) translateZ(90px) translate3d(0px, 0px, 0px);
-    }
-
-    &.value1 {
-      transform: rotateX(45deg) translateZ(90px) translate3d(0px, 0px, 0px);
-    }
-
-    &.value2 {
-      transform: rotateX(22.5deg) translateZ(90px) translate3d(0px, 0px, 0px);
-    }
-
-    &.value3 {
-      transform: rotateX(0deg) translateZ(90px) translate3d(0px, 0px, 0px);
-    }
-
-    &.value4 {
-      transform: rotateX(-22.5deg) translateZ(90px) translate3d(0px, 0px, 0px);
-    }
-
-    &.value5 {
-      transform: rotateX(-45deg) translateZ(90px) translate3d(0px, 0px, 0px);
-    }
-
-    &.value6 {
-      transform: rotateX(-67.5deg) translateZ(90px) translate3d(0px, 0px, 0px);
-    }
-  }
-}
-
-.top, .bottom {
-  height: 75px;
-}
-
-.top {
+  // Overlays the sizer rather than stacking below it, so the sizer's box is
+  // the only thing establishing the container's width.
+  position: absolute;
   top: 0;
-  position: absolute;
-  background: rgba(256, 256, 256, 0.6);
-  z-index: 2;
+  left: 0;
   width: 100%;
-  transform: translateZ(0px);
-  border-bottom: 1px solid #e2e2e2;
-  pointer-events: none
+  height: 100%;
+  transform-style: preserve-3d;
+
+  // The 3D drum is positioned from its centre, so the item at angle 0 lands in
+  // the middle of the control regardless of how tall the control is.
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.bottom {
+.values {
+  position: relative;
+  width: 100%;
+  height: var(--fs-scroll-picker-item-height);
+  transform-style: preserve-3d;
+}
+
+.value {
   position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  // Centres the row over the sizer-derived width. Nothing should ever be wide
+  // enough to need trimming now that the width comes from the longest label,
+  // so no ellipsis is set here - a value that somehow overflows should be
+  // visibly wrong rather than quietly truncated.
+  text-align: center;
+  height: var(--fs-scroll-picker-item-height);
+  color: var(--fs-scroll-picker-color);
+  transform-origin: center center;
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+
+  // Rendering is driven frame by frame from the physics loop, so any CSS
+  // transition here would fight the animation and add lag.
+  white-space: nowrap;
+
+  &.disabled {
+    opacity: var(--fs-scroll-picker-disabled-opacity) !important;
+  }
+}
+
+// The band marking the current selection, behind the values.
+.selection {
+  position: absolute;
+  top: 50%;
+  left: 4px;
+  right: 4px;
+  height: var(--fs-scroll-picker-item-height);
+  margin-top: calc(var(--fs-scroll-picker-item-height) / -2);
+  background: var(--fs-scroll-picker-selection-background);
+  border-radius: var(--fs-scroll-picker-selection-radius);
+  pointer-events: none;
+  z-index: 0;
+}
+
+// Gradient fades top and bottom, so values dissolve into the background at the
+// edges instead of being cut off by a hard overlay.
+.mask {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: calc((var(--fs-scroll-picker-height) - var(--fs-scroll-picker-item-height)) / 2);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.mask-top {
+  top: 0;
+  background: linear-gradient(
+    to bottom,
+    var(--fs-scroll-picker-background) 0%,
+    rgba(255, 255, 255, 0) 100%
+  );
+}
+
+.mask-bottom {
   bottom: 0;
-  z-index: 2;
-  background: rgba(256, 256, 256, 0.6);
-  border-top: 1px solid #e2e2e2;
-  width: 100%;
-  transform: translateZ(0px);
-  pointer-events: none
-}
-
-.beginning {
-  border-top: 1px solid black;
+  background: linear-gradient(
+    to top,
+    var(--fs-scroll-picker-background) 0%,
+    rgba(255, 255, 255, 0) 100%
+  );
 }

@@ -1,0 +1,38 @@
+<p>
+  Wrapping pickers loop past either end. Compare the month picker below with the
+  finite one in Kitchen Sink, which rubber-bands against its first and last value.
+</p>
+
+<div class="row">
+  <fs-scroll-picker
+      [values]="months"
+      name="month"
+      width="34%"
+      infinite
+      [(ngModel)]="month">
+    <ng-template fs-scroll-picker-template let-value="value">
+      {{value.name}}
+    </ng-template>
+  </fs-scroll-picker>
+
+  <fs-scroll-picker
+      [values]="hours"
+      name="hour"
+      width="33%"
+      infinite
+      [(ngModel)]="hour">
+  </fs-scroll-picker>
+
+  <fs-scroll-picker
+      [values]="minutes"
+      name="minute"
+      width="33%"
+      infinite
+      [(ngModel)]="minute">
+  </fs-scroll-picker>
+</div>
+
+<fieldset>
+  <legend>Selected</legend>
+  Month: {{month}}, Time: {{hour}}:{{minutes[minute]?.name}}
+</fieldset>

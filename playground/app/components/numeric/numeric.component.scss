@@ -1,0 +1,16 @@
+.examples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+}
+
+.example {
+  h4 {
+    margin: 0 0 8px;
+  }
+
+  .readout {
+    margin-top: 8px;
+    font-family: monospace;
+  }
+}

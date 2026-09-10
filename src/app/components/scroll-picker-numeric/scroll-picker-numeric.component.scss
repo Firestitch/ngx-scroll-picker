@@ -1,0 +1,112 @@
+:host {
+  // Inherited by the child pickers, so overriding a variable on this host
+  // restyles every column at once.
+  --fs-scroll-picker-height: 180px;
+  --fs-scroll-picker-item-height: 34px;
+  --fs-scroll-picker-font-size: 20px;
+
+  // Gap between a pinned affix and the numbers it sits beside.
+  --fs-scroll-picker-numeric-affix-gap: 6px;
+
+  // Space inside the selection band, before the first column and after the
+  // last. Set here rather than left to whatever slack a column's measured
+  // width happens to carry, so both ends are inset by the same amount.
+  --fs-scroll-picker-numeric-inset: 10px;
+
+  // Space between two adjacent drums, e.g. the number and a scrollable unit.
+  --fs-scroll-picker-numeric-column-gap: 6px;
+
+  // Tighter than a standalone picker's default. Each column already carries
+  // this on both sides, and the columns sit directly against each other here,
+  // so the full default would read as a gap between the digits of one number.
+  // Still enough to keep the selected row clear of the clipping boundary.
+  --fs-scroll-picker-item-padding: 4px;
+  --fs-scroll-picker-numeric-affix-color: var(--fs-scroll-picker-color, #000);
+
+  display: inline-block;
+
+  // Aligned by the box rather than by a baseline. A pinned affix such as "$" is
+  // in-flow text and so contributes a baseline, while the drums are
+  // overflow:hidden and contribute none - so without this, a picker carrying a
+  // pinned affix aligns on that affix's text and sits higher than its
+  // neighbours, and one without an affix falls back to its bottom edge.
+  vertical-align: middle;
+}
+
+.columns {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--fs-scroll-picker-height);
+  padding: 0 var(--fs-scroll-picker-numeric-inset);
+}
+
+// One band spanning every column, so the selection reads as a single row
+// rather than as a separate pill behind each drum. The drums' own bands are
+// suppressed below.
+.band {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  box-sizing: border-box;
+  height: var(--fs-scroll-picker-item-height);
+  margin-top: calc(var(--fs-scroll-picker-item-height) / -2);
+  background: var(--fs-scroll-picker-selection-background, rgba(120, 120, 128, 0.12));
+  border-radius: var(--fs-scroll-picker-selection-radius, 8px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+// Each column sizes itself from its own longest label, so a column is exactly
+// as wide as its widest value in the font actually in use.
+.column {
+  flex: 0 0 auto;
+
+  // Gap between adjacent drums. Set as margin on the columns rather than as a
+  // gap on the row, so the pinned affixes - which want their own tighter
+  // spacing - are not swept up in it. The columns' own item padding already
+  // contributes some separation, so this only tops it up.
+  & + .column {
+    margin-left: var(--fs-scroll-picker-numeric-column-gap);
+  }
+
+  // The shared band above stands in for the per-drum ones, which would
+  // otherwise draw a separate pill behind every column.
+  ::ng-deep .selection {
+    display: none;
+  }
+}
+
+// Text pinned level with the selection band while the numbers scroll past it.
+.affix {
+  flex: 0 0 auto;
+  font-size: var(--fs-scroll-picker-font-size);
+  line-height: var(--fs-scroll-picker-item-height);
+  color: var(--fs-scroll-picker-numeric-affix-color);
+  white-space: nowrap;
+
+  // The drums own the gestures; the affix must not swallow a drag that starts
+  // on it or interrupt one passing over it.
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+
+  // Above the drums' gradient masks, which would otherwise fade it out.
+  z-index: 3;
+}
+
+.affix-prefix {
+  padding-right: var(--fs-scroll-picker-numeric-affix-gap);
+}
+
+.affix-suffix {
+  padding-left: var(--fs-scroll-picker-numeric-affix-gap);
+}
+
+// The decimal point rides tight against both number columns rather than being
+// spaced like a unit.
+.affix-point {
+  padding: 0 1px;
+}

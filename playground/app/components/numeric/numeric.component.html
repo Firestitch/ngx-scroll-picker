@@ -1,0 +1,70 @@
+<p>
+  A numeric picker is a whole-number drum, an optional fraction drum, and an
+  optional unit drum. A prefix or suffix given as plain text stays pinned beside
+  the selection band; given a list of values it becomes a drum of its own.
+</p>
+
+<div class="examples">
+  <div class="example">
+    <h4>Whole numbers</h4>
+    <fs-scroll-picker-numeric
+        name="quantity"
+        [min]="1"
+        [max]="50"
+        [(ngModel)]="quantity">
+    </fs-scroll-picker-numeric>
+    <div class="readout">{{quantity}}</div>
+  </div>
+
+  <div class="example">
+    <h4>Currency</h4>
+    <fs-scroll-picker-numeric
+        name="price"
+        [min]="0"
+        [max]="999"
+        [decimalPlaces]="2"
+        prefix="$"
+        [(ngModel)]="price">
+    </fs-scroll-picker-numeric>
+    <div class="readout">${{price.toFixed(2)}}</div>
+  </div>
+
+  <div class="example">
+    <h4>Scrollable unit</h4>
+    <fs-scroll-picker-numeric
+        name="weight"
+        [min]="0"
+        [max]="400"
+        [decimalPlaces]="1"
+        [suffixValues]="weightUnits"
+        [(suffix)]="weightUnit"
+        [(ngModel)]="weight">
+    </fs-scroll-picker-numeric>
+    <div class="readout">{{weight}} {{weightUnit}}</div>
+  </div>
+
+  <div class="example">
+    <h4>Three decimal places</h4>
+    <fs-scroll-picker-numeric
+        name="reading"
+        [min]="0"
+        [max]="10"
+        [decimalPlaces]="3"
+        [(ngModel)]="reading">
+    </fs-scroll-picker-numeric>
+    <div class="readout">{{reading}}</div>
+  </div>
+
+  <div class="example">
+    <h4>Unit labels</h4>
+    <fs-scroll-picker-numeric
+        name="temperature"
+        [min]="-40"
+        [max]="120"
+        [suffixValues]="temperatureUnits"
+        [(suffix)]="temperatureUnit"
+        [(ngModel)]="temperature">
+    </fs-scroll-picker-numeric>
+    <div class="readout">{{temperature}} ({{temperatureUnit}})</div>
+  </div>
+</div>

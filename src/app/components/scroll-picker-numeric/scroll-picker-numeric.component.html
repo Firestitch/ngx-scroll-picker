@@ -1,0 +1,45 @@
+<div class="columns">
+  <div class="band"></div>
+
+  @if (hasPrefixColumn) {
+    <fs-scroll-picker
+        class="column column-affix"
+        [values]="prefixItems"
+        [ngModel]="prefix"
+        (ngModelChange)="prefixChanged($event)">
+    </fs-scroll-picker>
+  } @else if (prefix !== undefined && prefix !== null && prefix !== '') {
+    <div class="affix affix-prefix">{{prefix}}</div>
+  }
+
+  <fs-scroll-picker
+      class="column column-whole"
+      [values]="wholeValues"
+      [infinite]="infinite"
+      [ngModel]="whole"
+      (ngModelChange)="wholeChanged($event)">
+  </fs-scroll-picker>
+
+  @if (hasFraction) {
+    <div class="affix affix-point">.</div>
+
+    <fs-scroll-picker
+        class="column column-fraction"
+        [values]="fractionValues"
+        infinite
+        [ngModel]="fraction"
+        (ngModelChange)="fractionChanged($event)">
+    </fs-scroll-picker>
+  }
+
+  @if (hasSuffixColumn) {
+    <fs-scroll-picker
+        class="column column-affix"
+        [values]="suffixItems"
+        [ngModel]="suffix"
+        (ngModelChange)="suffixChanged($event)">
+    </fs-scroll-picker>
+  } @else if (suffix !== undefined && suffix !== null && suffix !== '') {
+    <div class="affix affix-suffix">{{suffix}}</div>
+  }
+</div>

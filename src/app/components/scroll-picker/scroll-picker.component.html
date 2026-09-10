@@ -1,51 +1,58 @@
-<div 
-    class="scroll-container" 
+<div
+    class="scroll-container"
+    tabindex="0"
+    role="listbox"
+    [attr.aria-activedescendant]="value"
     #scrollContainer>
-  <div class="top"></div>
-  <div class="bottom"></div>
-  <div class="scroller">
-      <div class="values">
-        <div 
-            class="value value0" 
-            (click)="valueClick(-3)"
-            [ngClass]="{ disabled: disabled[displayValues[0]?.value] }">
-          {{displayValues[0]?.name}}
-        </div>
-        <div 
-            class="value value1" 
-            (click)="valueClick(-2)"
-            [ngClass]="{ disabled: disabled[displayValues[1]?.value] }">
-          {{displayValues[1]?.name}}
-        </div>
-        <div 
-            class="value value2" 
-            (click)="valueClick(-1)"
-            [ngClass]="{ disabled: disabled[displayValues[2]?.value] }">
-          {{displayValues[2]?.name}}
-        </div>
-        <div 
-            class="value value3" 
-            [ngClass]="{ disabled: disabled[displayValues[3]?.value] }">
-          {{displayValues[3]?.name}}
-        </div>
-        <div 
-            class="value value4" 
-            (click)="valueClick(1)"
-            [ngClass]="{ disabled: disabled[displayValues[4]?.value] }">
-          {{displayValues[4]?.name}}
-        </div>
-        <div 
-            class="value value5" 
-            (click)="valueClick(2)"
-            [ngClass]="{ disabled: disabled[displayValues[5]?.value] }">
-          {{displayValues[5]?.name}}
-        </div>
-        <div 
-            class="value value6" 
-            (click)="valueClick(3)"
-            [ngClass]="{ disabled: disabled[displayValues[6]?.value] }">
-          {{displayValues[6]?.name}}
-        </div>
+  <div class="mask mask-top"></div>
+  <div class="mask mask-bottom"></div>
+  <div class="selection"></div>
+  <!--
+    Gives the drum its width. Every .value row is absolutely positioned inside
+    the 3D transform, so the drum has no intrinsic width of its own; this row
+    is the one thing in normal flow, and it holds the longest label so the
+    browser measures the real rendered text rather than the width being
+    guessed from a character count.
+  -->
+  <div class="sizer" aria-hidden="true">
+    @for (item of sizerItems; track item.value) {
+      <div class="sizer-row">
+        @if (template) {
+          <ng-container
+              [ngTemplateOutlet]="template"
+              [ngTemplateOutletContext]="{ value: item, $implicit: item }">
+          </ng-container>
+        } @else {
+          {{item.name}}
+        }
       </div>
+    }
+  </div>
+
+  <div class="scroller" [style.transform]="'translateZ(' + -radius + 'px)'">
+    <div class="values">
+      @for (slot of slots; track slot.key) {
+        <div
+            class="value"
+            role="option"
+            [attr.aria-selected]="slot.selected"
+            [style.transform]="'rotateX(' + slot.angle + 'deg) translateZ(' + radius + 'px) scale(' + slot.scale + ')'"
+            [style.opacity]="slot.opacity"
+            [style.visibility]="slot.hidden ? 'hidden' : 'visible'"
+            [ngClass]="{ disabled: slot.disabled, selected: slot.selected }"
+            (click)="slotClick(slot)">
+          @if (slot.item) {
+            @if (template) {
+              <ng-container
+                  [ngTemplateOutlet]="template"
+                  [ngTemplateOutletContext]="{ value: slot.item, $implicit: slot.item }">
+              </ng-container>
+            } @else {
+              {{slot.item.name}}
+            }
+          }
+        </div>
+      }
+    </div>
   </div>
 </div>

@@ -1,24 +1,18 @@
 import { Component } from '@angular/core';
-import { ScrollPickerComponent } from '../../../../src/app/components/scroll-picker/scroll-picker.component';
 import { FormsModule } from '@angular/forms';
+import { ScrollPickerComponent } from '../../../../src/app/components/scroll-picker/scroll-picker.component';
 import { ScrollPickerTemplateComponent } from '../../../../src/app/directives/scroll-picker-template.directive';
 
 
 @Component({
-    selector: 'kitchen-sink',
-    templateUrl: 'kitchen-sink.component.html',
-    styleUrls: ['kitchen-sink.component.scss'],
+    selector: 'app-infinite',
+    templateUrl: 'infinite.component.html',
+    styleUrls: ['infinite.component.scss'],
     standalone: true,
-    imports: [
-        ScrollPickerComponent,
-        FormsModule,
-        ScrollPickerTemplateComponent,
-    ],
+    imports: [FormsModule, ScrollPickerComponent, ScrollPickerTemplateComponent],
 })
-export class KitchenSinkComponent {
+export class InfiniteComponent {
 
-  public config = {};
-  public model = new Date('2015-10-10 15:45');
   public months = [
     { name: 'January', value: 0 },
     { name: 'February', value: 1 },
@@ -33,10 +27,15 @@ export class KitchenSinkComponent {
     { name: 'November', value: 10 },
     { name: 'December', value: 11 },
   ];
-  public dayMax = 31;
+
+  public hours = Array.from({ length: 12 }, (_, i) => ({ name: i + 1, value: i + 1 }));
+  public minutes = Array.from({ length: 60 }, (_, i) => ({
+    name: String(i).padStart(2, '0'),
+    value: i,
+  }));
+
   public month = (new Date()).getMonth();
-  public day = (new Date()).getDate();
-  public year = (new Date()).getFullYear();
-  public yearMax = (new Date()).getFullYear();
+  public hour = 10;
+  public minute = 45;
 
 }
