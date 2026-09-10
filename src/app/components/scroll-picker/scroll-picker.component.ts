@@ -260,6 +260,8 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
   public ngOnDestroy(): void {
     this._cancelFrames();
     this._clearWheelTimer();
+    this._releaseCapture(this._pointerId);
+    this._pointerId = null;
     this._detachPointerListeners();
     this._listeners.forEach((off) => off());
     this._listeners = [];
@@ -355,13 +357,21 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
       return;
     }
 
-    // A fresh press while a gesture is still open means the previous one never
-    // received its pointerup - iOS drops it when a system gesture interrupts
-    // the touch. Retire the stale gesture rather than ignoring the new press,
-    // which would otherwise leave the drum tracking a pointer that is gone.
+    // A second finger landing mid-drag is a normal thing to do on a touch
+    // screen, and the drum can only follow one. Ignore it and keep tracking the
+    // pointer that started the gesture.
+    //
+    // Retiring the open gesture here instead would strand it: `_endGesture`
+    // detaches the window listeners and clears `_pointerId`, so the original
+    // finger's pointerup no longer matches and is dropped. Lift the second
+    // finger before the first and the drum is left following a pointer whose
+    // terminating event it has already thrown away - it then spins for as long
+    // as that finger stays down and never settles.
     if (this._pointerId !== null) {
-      this._endGesture();
+      return;
     }
+
+    const el = this.scrollContainer.nativeElement;
 
     // Grabbing a moving drum stops it dead, like catching a spinning wheel.
     this._cancelFrame();
@@ -375,6 +385,19 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
     this._velocity = 0;
     this._samples = [{ time: event.timeStamp, position: this._offset }];
 
+    // Capture routes every later event for this pointer to this element, so the
+    // gesture still terminates when the finger leaves the drum or the browser
+    // retargets the touch. iOS Safari captures touch pointers implicitly, but
+    // only taking it explicitly makes `lostpointercapture` meaningful - without
+    // the call that listener can never fire, since the element never held the
+    // capture it would be losing.
+    try {
+      el.setPointerCapture(event.pointerId);
+    } catch {
+      // Safari throws for a pointer that is already gone. The window listeners
+      // below still end the gesture, so there is nothing to recover from.
+    }
+
     this._pointerListeners = [
       this._on(window, 'pointermove', this._onPointerMove),
       this._on(window, 'pointerup', this._onPointerUp),
@@ -382,7 +405,7 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
       // Fires when the browser takes the pointer away mid-gesture (a system
       // edge-swipe, a context menu). Without it that capture loss would leave
       // the gesture open with no further events coming.
-      this._on(window, 'lostpointercapture', this._onPointerUp),
+      this._on(el, 'lostpointercapture', this._onPointerUp),
     ];
 
     // Deliberately not preventDefault()ed for touch. Suppressing the default on
@@ -428,6 +451,7 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
 
   /** Clears gesture state and the window listeners, leaving the drum where it is. */
   private _endGesture(): void {
+    this._releaseCapture(this._pointerId);
     this._pointerId = null;
     this._pointerMoved = false;
     this._samples = [];
@@ -440,6 +464,7 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
       return;
     }
 
+    this._releaseCapture(this._pointerId);
     this._pointerId = null;
     this._detachPointerListeners();
     this._zone.run(() => this._onTouched());
@@ -470,6 +495,26 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
   private _detachPointerListeners(): void {
     this._pointerListeners.forEach((off) => off());
     this._pointerListeners = [];
+  }
+
+  /**
+   * Drops the capture taken at pointerdown. Safe to call for a pointer that has
+   * already gone away - the browser reports it as not captured and we stop.
+   */
+  private _releaseCapture(pointerId: number): void {
+    if (pointerId === null) {
+      return;
+    }
+
+    const el = this.scrollContainer.nativeElement;
+
+    try {
+      if (el.hasPointerCapture(pointerId)) {
+        el.releasePointerCapture(pointerId);
+      }
+    } catch {
+      // Nothing to release. The gesture is over either way.
+    }
   }
 
   // ---------------------------------------------------------------------------
