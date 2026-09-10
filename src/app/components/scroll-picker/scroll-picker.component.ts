@@ -110,7 +110,30 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
   private _flingDecay = Deceleration;
   private _mode: Mode = 'idle';
 
+  /** Handle for the physics loop's animation frame. */
   private _frame: number = null;
+
+  /**
+   * Handle for the render-only frame. Kept apart from `_frame` because the two
+   * schedulers cancel and clear their handles independently - sharing one field
+   * let a render callback null out a live physics frame, after which the loop
+   * scheduled a second concurrent chain. Every extra chain advanced the physics
+   * by its own delta and emitted its own value, so a single touch drag on iOS
+   * spun the drum without stopping and fired change events every frame per
+   * chain.
+   */
+  private _renderFrame: number = null;
+
+  /**
+   * Bumped every time the physics loop is cancelled or restarted. A frame that
+   * was already dispatched when the loop was cancelled still runs its callback,
+   * so `_step` compares the generation it was scheduled under against this and
+   * retires if it no longer matches. Without it a pointerdown landing on a
+   * moving drum let the in-flight callback re-schedule itself, leaving a
+   * physics loop running underneath the drag and fighting the pointer.
+   */
+  private _generation = 0;
+
   private _lastFrameTime = 0;
 
   private _snapTarget = 0;
@@ -130,12 +153,6 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
 
   private _listeners: (() => void)[] = [];
 
-  /**
-   * Bound once so every animation frame reuses a single reference, and so the
-   * field block stays free of function definitions.
-   */
-  private _boundStep: (now: number) => void;
-
   // Replaced by registerOnTouched/registerOnChange once a form binds to us.
   private _onTouched: () => void = noop;
   private _onChange: (value: any) => void = noop;
@@ -144,8 +161,6 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
   private _zone = inject(NgZone);
 
   public ngOnInit(): void {
-    this._boundStep = (now: number): void => this._step(now);
-
     this.updateValues();
     this.updateDisabled();
 
@@ -243,7 +258,7 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
   }
 
   public ngOnDestroy(): void {
-    this._cancelFrame();
+    this._cancelFrames();
     this._clearWheelTimer();
     this._detachPointerListeners();
     this._listeners.forEach((off) => off());
@@ -504,7 +519,7 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
 
   /** Moves to a position with no animation - used by writeValue and input changes. */
   private _jumpTo(offset: number): void {
-    this._cancelFrame();
+    this._cancelFrames();
     this._clearWheelTimer();
 
     this._mode = 'idle';
@@ -516,14 +531,33 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
   }
 
   private _startLoop(): void {
-    if (this._frame !== null) {
-      cancelAnimationFrame(this._frame);
-    }
+    // A pending render frame would otherwise fire mid-loop and clear its own
+    // handle while the physics frames keep running.
+    this._cancelRenderFrame();
+    this._cancelFrame();
 
-    this._frame = requestAnimationFrame(this._boundStep);
+    const generation = this._generation;
+
+    this._frame = requestAnimationFrame((now) => this._step(now, generation));
   }
 
-  private _step(now: number): void {
+  private _step(now: number, generation: number): void {
+    // The loop was cancelled after this frame was dispatched - a drag started,
+    // or the component was torn down. Retiring here is what stops the callback
+    // re-scheduling itself into a loop nothing owns any more.
+    if (generation !== this._generation) {
+      return;
+    }
+
+    // Only momentum drives the loop. A gesture that took over mid-flight leaves
+    // the mode as 'drag', and stepping the spring then would move the drum out
+    // from under the pointer.
+    if (this._mode !== 'fling' && this._mode !== 'snap') {
+      this._frame = null;
+
+      return;
+    }
+
     const delta = this._lastFrameTime ? Math.min(now - this._lastFrameTime, 48) : 16;
     this._lastFrameTime = now;
 
@@ -533,7 +567,7 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
     this._render();
 
     if (running) {
-      this._frame = requestAnimationFrame(this._boundStep);
+      this._frame = requestAnimationFrame((next) => this._step(next, generation));
     } else {
       this._frame = null;
       this._mode = 'idle';
@@ -596,10 +630,20 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
   }
 
   private _cancelFrame(): void {
+    // Bumped unconditionally: a frame already dispatched for this generation
+    // runs its callback even after cancelAnimationFrame, and the handle is
+    // null in exactly that case.
+    this._generation++;
+
     if (this._frame !== null) {
       cancelAnimationFrame(this._frame);
       this._frame = null;
     }
+  }
+
+  private _cancelFrames(): void {
+    this._cancelFrame();
+    this._cancelRenderFrame();
   }
 
   /** Emits the settled value inside Angular once motion has stopped. */
@@ -725,15 +769,26 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
     }
   }
 
+  /**
+   * Coalesces renders during a gesture to one per frame. Skipped entirely while
+   * the physics loop runs, since that already renders every frame.
+   */
   private _scheduleRender(): void {
-    if (this._frame !== null) {
+    if (this._frame !== null || this._renderFrame !== null) {
       return;
     }
 
-    this._frame = requestAnimationFrame(() => {
-      this._frame = null;
+    this._renderFrame = requestAnimationFrame(() => {
+      this._renderFrame = null;
       this._render();
     });
+  }
+
+  private _cancelRenderFrame(): void {
+    if (this._renderFrame !== null) {
+      cancelAnimationFrame(this._renderFrame);
+      this._renderFrame = null;
+    }
   }
 
   /** Rebuilds the visible slots from the current offset. */
