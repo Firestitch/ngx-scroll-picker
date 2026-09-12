@@ -19,9 +19,13 @@
  *    sound is what carries the feel there.
  *
  * Sound is Web Audio, works everywhere, and is synthesized rather than loaded
- * so the library ships no binary asset. The tick is a short burst of highpassed
- * white noise: a real detent is broadband, and any oscillator - however brief -
- * is heard as a beep before it is heard as a click.
+ * so the library ships no binary asset. It models the iPhone picker tick - see
+ * the constants below for what that sound actually is and why it is built the
+ * way it is.
+ *
+ * On a real device the effect is overwhelmingly tactile; audio alone is an
+ * imitation of it. Inside a native shell the Capacitor tier above is what makes
+ * it the real thing.
  *
  * Capacitor is reached through the global it injects rather than imported, so
  * this library keeps its empty dependency list and plain web consumers install
@@ -60,52 +64,248 @@ interface CapacitorGlobal {
 const vibrateDuration = 8;
 
 /**
- * Corner frequency (Hz) of the highpass the click's noise runs through.
+ * The tick models what an iPhone picker actually emits, which is not an audio
+ * file: a picker calls UISelectionFeedbackGenerator, which plays no audio at
+ * all. Everything the user hears is the Taptic Engine - a linear resonant
+ * actuator - physically moving, plus the phone's enclosure ringing in
+ * response. So it is a mechanical transient with no single frequency, and it
+ * has to be synthesized rather than sampled.
  *
- * The tick is a filtered noise burst rather than an oscillator because that is
- * what a real detent is: a broadband transient, not a pitch. An oscillator at
- * any frequency reads as a beep, however short it is - the ear hears the note
- * before it hears the click. Cutting everything below this leaves only the
- * bright edge of the noise, which is the part that sounds like something
- * mechanical passing a notch.
- */
-const clickHighpass = 4000;
-
-/**
- * Length of the click envelope in seconds. Extremely short by design - at this
- * duration the burst is heard as a single transient, and a fast fling stays a
- * run of distinct ticks instead of smearing into noise.
- */
-const clickDuration = 0.006;
-
-/**
- * Peak gain of the click. Louder than a tonal tick of the same perceived
- * volume needs to be: the burst is six milliseconds long, so there is very
- * little energy in it and the ear needs the amplitude to register the edge.
- */
-const clickGain = 0.35;
-
-/**
- * Length in seconds of the reusable white-noise buffer the clicks are cut from.
+ * Two superimposed components, summed and rendered once (see `renderTick`):
  *
- * Generated once and shared by every tick. Long enough that consecutive ticks
- * start at different offsets and do not sound like a repeating sample, short
- * enough to stay negligible in memory.
+ * - BODY, the actuator. A short pitched thump that falls as it settles. The
+ *   downward sweep is what stops it reading as a beep.
+ * - CLICK, the enclosure transient. Band-limited noise, much shorter than the
+ *   body, and the part that makes it a "click" rather than a "thud".
+ *
+ * The figures below were tuned by ear against the Clock app's timer wheel, not
+ * derived from a spectrogram.
+ *
+ * The trap worth recording: the LRA's resonance, widely measured near 230Hz, is
+ * what the HAND feels. Building the audible part around that figure produces a
+ * low thump, and the real picker is a bright "tk" - what the ear gets is the
+ * enclosure ringing, which sits far higher. Both components here are
+ * deliberately well above the haptic resonance for that reason.
  */
-const noiseDuration = 0.05;
 
 /**
- * Shortest gap (ms) between two ticks. A hard fling crosses detents faster than
- * either channel can usefully reproduce: the vibration motor cannot restart
- * that quickly and the clicks smear into a buzz. Dropping the ticks in between
- * keeps a fast spin sounding like a fast spin rather than a tone.
+ * Total rendered length of the tick, in seconds. Dry - no tail, no reverb.
+ *
+ * Short: the audible event is a tiny enclosure transient, over almost before it
+ * has started. Anything longer starts to read as a tone.
  */
-const minInterval = 18;
+const tickDuration = 0.012;
+
+/**
+ * Where the body's pitch sweep begins, in Hz.
+ *
+ * Kept well above the LRA's own resonance. The actuator resonates near 230Hz
+ * and that is what the hand feels, but it is NOT what the ear hears - tuning
+ * the audible component to the haptic frequency produces a low thump, where
+ * the real picker is a bright "tk". What reaches the ear is the case ringing,
+ * which sits far higher, so the body here is a high click rather than a thud.
+ */
+const bodyStartFrequency = 2600;
+
+/** Where it lands, in Hz. Falling rather than steady is what avoids a beep. */
+const bodyEndFrequency = 1500;
+
+/** Seconds over which the body sweeps down. Fast, so it is heard as a click. */
+const bodySweep = 0.004;
+
+/**
+ * Peak gain of the body component.
+ *
+ * Quiet relative to the click: on a real device the pitched part is mostly felt
+ * rather than heard, and leaning on it is what made this sound like a thump.
+ */
+const bodyGain = 0.18;
+
+/** Body attack in seconds. Effectively instantaneous, as an impulse is. */
+const bodyAttack = 0.0005;
+
+/** Seconds by which the body has decayed to silence. */
+const bodyDecay = 0.009;
+
+/**
+ * Centre frequency (Hz) of the bandpass shaping the click's noise.
+ *
+ * High, and the dominant component. This is the part that actually sounds like
+ * the Timer wheel.
+ */
+const clickFrequency = 4200;
+
+/** Q of that bandpass. Broad enough to stay noise rather than becoming pitched. */
+const clickQ = 0.9;
+
+/** Seconds of noise samples the click is cut from. */
+const clickNoise = 0.006;
+
+/** Peak gain of the click component - the loudest part of the tick. */
+const clickGain = 0.85;
+
+/** Seconds by which the click has decayed to silence. */
+const clickDecay = 0.004;
+
+/**
+ * Corner frequency (Hz) of the highpass on the summed bus.
+ *
+ * Well up: there is nothing wanted down low, and cutting it is part of what
+ * keeps the tick crisp instead of thumpy. Phone speakers reproduce very little
+ * below this anyway.
+ */
+const busHighpass = 900;
+
+/**
+ * Playback gain. A UI sound belongs under everything else on the page.
+ */
+const tickGain = 0.25;
+
+/**
+ * Floor for exponential ramps. Web Audio cannot ramp to or from zero, so the
+ * envelopes start and end at this instead.
+ */
+const rampFloor = 0.0001;
+
+/**
+ * Random spread applied to playbackRate per tick, as a fraction.
+ *
+ * One pre-rendered buffer replayed identically sounds machine-gun-like on a
+ * fast scroll. A real device is perfectly uniform, so this is a deliberate
+ * departure - a few percent is enough to break up the repetition without the
+ * pitch wobble becoming audible on its own.
+ */
+const rateJitter = 0.03;
+
+/**
+ * Shortest gap (ms) between two ticks, and the highest-impact number here.
+ *
+ * A hard flick crosses sixty or more items per second. Unthrottled, the ticks
+ * stop being separate events and become a continuous buzz - the illusion
+ * collapses immediately. Anything arriving sooner than this is dropped.
+ */
+const minInterval = 29;
+
+
+/**
+ * One AudioContext and one noise buffer for every picker on the page.
+ *
+ * Deliberately module-level rather than per-instance. Safari on iOS caps a
+ * document at a handful of AudioContexts - roughly four - and refuses or
+ * permanently suspends the rest. A page with several pickers (a date picker
+ * alone is three, and a numeric picker is up to four columns) blows past that
+ * instantly: the first few drums click and every one after them is silent,
+ * which is impossible to spot on desktop where the cap is far higher.
+ *
+ * Sharing also means the unlock only has to be won once: whichever picker is
+ * touched first resumes the context, and every other drum on the page is
+ * audible immediately rather than each waiting for its own gesture.
+ */
+const shared: {
+  context: AudioContext;
+  tick: AudioBuffer;
+  unlock: (() => void)[];
+} = {
+  context: null,
+  tick: null,
+  unlock: [],
+};
+
+/** How many live feedback instances are sharing the context above. */
+let instances = 0;
+
+
+/**
+ * Renders the tick once into a buffer, off the audio thread.
+ *
+ * Building the oscillator/filter graph per tick is audible: on a fast scroll it
+ * crackles and the timing drifts, because each tick pays for node construction
+ * before it can start. Rendering once and replaying the result is both cheaper
+ * and exact.
+ */
+function renderTick(sampleRate: number): Promise<AudioBuffer> {
+  const offlineCtor = (window as any).OfflineAudioContext
+    ?? (window as any).webkitOfflineAudioContext;
+
+  if (!offlineCtor) {
+    return Promise.reject(new Error('no OfflineAudioContext'));
+  }
+
+  const frames = Math.ceil(sampleRate * tickDuration);
+  const offline: OfflineAudioContext = new offlineCtor(1, frames, sampleRate);
+
+  // Both components share one highpass into the destination.
+  const bus = offline.createBiquadFilter();
+
+  bus.type = 'highpass';
+  bus.frequency.value = busHighpass;
+  bus.connect(offline.destination);
+
+  renderBody(offline, bus);
+  renderClick(offline, bus, sampleRate);
+
+  return offline.startRendering();
+}
+
+/**
+ * The actuator: a sine falling from `bodyStartFrequency`, which is what keeps
+ * it from sounding like a beep.
+ */
+function renderBody(offline: OfflineAudioContext, bus: AudioNode): void {
+  const body = offline.createOscillator();
+  const envelope = offline.createGain();
+
+  body.type = 'sine';
+  body.frequency.setValueAtTime(bodyStartFrequency, 0);
+  body.frequency.exponentialRampToValueAtTime(bodyEndFrequency, bodySweep);
+
+  envelope.gain.setValueAtTime(rampFloor, 0);
+  envelope.gain.exponentialRampToValueAtTime(bodyGain, bodyAttack);
+  envelope.gain.exponentialRampToValueAtTime(rampFloor, bodyDecay);
+
+  body.connect(envelope);
+  envelope.connect(bus);
+  body.start(0);
+  body.stop(tickDuration);
+}
+
+/**
+ * The enclosure transient: band-limited noise, much shorter than the body, and
+ * the part that makes the event read as a click rather than a thud.
+ */
+function renderClick(offline: OfflineAudioContext, bus: AudioNode, sampleRate: number): void {
+  const samples = Math.ceil(sampleRate * clickNoise);
+  const noise = offline.createBuffer(1, samples, sampleRate);
+  const channel = noise.getChannelData(0);
+
+  for (let i = 0; i < samples; i++) {
+    channel[i] = Math.random() * 2 - 1;
+  }
+
+  const click = offline.createBufferSource();
+  const band = offline.createBiquadFilter();
+  const envelope = offline.createGain();
+
+  click.buffer = noise;
+
+  band.type = 'bandpass';
+  band.frequency.value = clickFrequency;
+  band.Q.value = clickQ;
+
+  envelope.gain.setValueAtTime(clickGain, 0);
+  envelope.gain.exponentialRampToValueAtTime(rampFloor, clickDecay);
+
+  click.connect(band);
+  band.connect(envelope);
+  envelope.connect(bus);
+  click.start(0);
+}
 
 
 /**
  * Emits a tick per detent crossed. One instance per picker, owned by the
- * component and disposed with it.
+ * component and disposed with it. The audio context itself is shared across
+ * every instance - see `shared` above.
  */
 export class ScrollPickerFeedback {
 
@@ -122,8 +322,6 @@ export class ScrollPickerFeedback {
 
   private _lastTick = 0;
 
-  private _context: AudioContext = null;
-
   /**
    * Capacitor's Haptics plugin, or null when not running under one. Undefined
    * until first looked up - the lookup walks a global and this is consulted
@@ -134,15 +332,9 @@ export class ScrollPickerFeedback {
   /** True between selectionStart and selectionEnd, so they stay paired. */
   private _selecting = false;
 
-  /** Detaches the document-level unlock listeners, once they have fired. */
-  private _unlockListeners: (() => void)[] = [];
-
-  /**
-   * White noise every click is cut from. Built once on the first tick, because
-   * it needs the context's sample rate and the context does not exist until a
-   * gesture has armed it.
-   */
-  private _noise: AudioBuffer = null;
+  constructor() {
+    instances++;
+  }
 
   private get _enabled(): boolean {
     return this.haptics || this.sound;
@@ -165,14 +357,20 @@ export class ScrollPickerFeedback {
       return;
     }
 
-    if (!this._context) {
+    if (!shared.context) {
       const context = (window as any).AudioContext ?? (window as any).webkitAudioContext;
 
       if (!context) {
         return;
       }
 
-      this._context = new context();
+      // 'interactive' asks for the smallest buffer the device will give, which
+      // is what keeps the tick feeling attached to the drum rather than
+      // trailing it.
+      shared.context = new context({ latencyHint: 'interactive' });
+
+      this._session();
+      this._prerender();
     }
 
     this._resume();
@@ -227,15 +425,27 @@ export class ScrollPickerFeedback {
       .catch(() => { /* bridge gone; nothing to close */ });
   }
 
+  /**
+   * Releases this instance's share of the audio. The context and noise buffer
+   * outlive any single picker and are torn down only when the last one goes -
+   * closing them while another drum is still on the page would silence it.
+   */
   public destroy(): void {
     this.settle();
+
+    instances = Math.max(0, instances - 1);
+
+    if (instances > 0) {
+      return;
+    }
+
     this._releaseUnlock();
 
-    this._noise = null;
+    shared.tick = null;
 
-    if (this._context) {
-      this._context.close().catch(() => { /* already closed by teardown */ });
-      this._context = null;
+    if (shared.context) {
+      shared.context.close().catch(() => { /* already closed by teardown */ });
+      shared.context = null;
     }
   }
 
@@ -251,18 +461,18 @@ export class ScrollPickerFeedback {
    * requiring the user to happen to press on the drum itself.
    */
   private _resume(): void {
-    if (!this._context || this._context.state !== 'suspended') {
+    if (!shared.context || shared.context.state !== 'suspended') {
       return;
     }
 
-    this._context.resume().catch(() => { /* refused; the listeners below retry */ });
+    shared.context.resume().catch(() => { /* refused; the listeners below retry */ });
 
-    if (this._unlockListeners.length || typeof document === 'undefined') {
+    if (shared.unlock.length || typeof document === 'undefined') {
       return;
     }
 
     const unlock = (): void => {
-      this._context?.resume()
+      shared.context?.resume()
         .then(() => this._releaseUnlock())
         .catch(() => { /* still refused; the listeners stay for the next press */ });
     };
@@ -271,15 +481,42 @@ export class ScrollPickerFeedback {
     // passive, so nothing here can interfere with the page's own handlers.
     for (const type of ['pointerdown', 'mousedown', 'keydown', 'touchend']) {
       document.addEventListener(type, unlock, { capture: true, passive: true });
-      this._unlockListeners.push(() => {
+      shared.unlock.push(() => {
         document.removeEventListener(type, unlock, { capture: true });
       });
     }
   }
 
   private _releaseUnlock(): void {
-    this._unlockListeners.forEach((off: () => void) => off());
-    this._unlockListeners = [];
+    shared.unlock.forEach((off: () => void) => off());
+    shared.unlock = [];
+  }
+
+  /**
+   * Declares this as ambient audio, where the browser supports saying so.
+   *
+   * 'ambient' mixes with whatever the user is already playing and obeys the
+   * hardware mute switch - both correct for a UI sound. The default category
+   * would duck their music to click at them, which is not a trade any picker
+   * should make on the app's behalf.
+   */
+  private _session(): void {
+    const session = (navigator as any).audioSession;
+
+    if (session) {
+      session.type = 'ambient';
+    }
+  }
+
+  /** Kicks off the one-time offline render of the tick buffer. */
+  private _prerender(): void {
+    if (shared.tick || !shared.context) {
+      return;
+    }
+
+    renderTick(shared.context.sampleRate)
+      .then((buffer: AudioBuffer) => shared.tick = buffer)
+      .catch(() => { /* no offline context; ticks stay silent */ });
   }
 
   /**
@@ -393,79 +630,52 @@ export class ScrollPickerFeedback {
     }
   }
 
-  /** The shared white-noise buffer, generated on first use. */
-  private _noiseBuffer(context: AudioContext): AudioBuffer {
-    if (this._noise) {
-      return this._noise;
-    }
-
-    const samples = Math.floor(context.sampleRate * noiseDuration);
-
-    this._noise = context.createBuffer(1, samples, context.sampleRate);
-
-    const channel = this._noise.getChannelData(0);
-
-    for (let i = 0; i < samples; i++) {
-      channel[i] = Math.random() * 2 - 1;
-    }
-
-    return this._noise;
-  }
-
   private _click(): void {
-    if (!this._context) {
+    if (!shared.context) {
       return;
     }
 
     // A context resumed inside this same gesture is often still 'suspended'
     // here: resume() is async and the first ticks of a drag arrive before it
-    // settles. Nudging it again and scheduling the click anyway is what makes
-    // the opening ticks audible - bailing on the state instead silently
-    // dropped every tick of the first drag after load, which on iOS is every
-    // drag, since the context there always starts suspended.
-    if (this._context.state === 'suspended') {
+    // settles. Nudging it again and playing anyway is what makes the opening
+    // ticks audible - bailing on the state instead silently dropped every tick
+    // of the first drag after load, which on iOS is every drag, since the
+    // context there always starts suspended.
+    if (shared.context.state === 'suspended') {
       this._resume();
     }
 
     // 'closed' is terminal - teardown has run and the nodes below would throw.
-    if (this._context.state === 'closed') {
+    // A missing buffer means the offline render has not landed yet; the next
+    // tick will find it.
+    if (shared.context.state === 'closed' || !shared.tick) {
       return;
     }
 
-    this._burst(this._context);
+    this._play(shared.context, shared.tick);
   }
 
-  /** Schedules one highpassed noise burst on the context's own clock. */
-  private _burst(context: AudioContext): void {
-    const start = context.currentTime;
+  /** Replays the pre-rendered tick. Two nodes, no synthesis. */
+  private _play(context: AudioContext, buffer: AudioBuffer): void {
     const source = context.createBufferSource();
-    const highpass = context.createBiquadFilter();
     const gain = context.createGain();
 
-    source.buffer = this._noiseBuffer(context);
-    highpass.type = 'highpass';
-    highpass.frequency.value = clickHighpass;
+    source.buffer = buffer;
 
-    // Ramped to near-silence rather than stopped flat. Cutting the signal off
-    // mid-burst puts a step in it, which is audible as a pop on top of the
-    // click. Exponential ramps cannot reach zero, hence the small floor.
-    gain.gain.setValueAtTime(clickGain, start);
-    gain.gain.exponentialRampToValueAtTime(0.0001, start + clickDuration);
+    // A few percent either way. The buffer is identical every time, and an
+    // exactly repeating sample reads as machine-gun fire on a fast scroll.
+    source.playbackRate.value = 1 + (Math.random() * 2 - 1) * rateJitter;
 
-    source.connect(highpass);
-    highpass.connect(gain);
+    gain.gain.value = tickGain;
+
+    source.connect(gain);
     gain.connect(context.destination);
-
-    // Each burst starts at a random offset in the buffer, so a run of ticks is
-    // not the same few milliseconds of noise repeating - which the ear picks up
-    // as a tone very quickly.
-    source.start(start, Math.random() * (noiseDuration - clickDuration), clickDuration);
+    source.start();
 
     // Nodes are single-use and pile up until collected otherwise; a long fling
-    // creates one set per detent.
+    // creates one pair per detent.
     source.onended = () => {
       source.disconnect();
-      highpass.disconnect();
       gain.disconnect();
     };
   }
