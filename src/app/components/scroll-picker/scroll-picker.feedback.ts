@@ -2,18 +2,55 @@
  * Tactile and audible feedback for the scroll picker.
  *
  * Fires once per detent the drum passes, which is what a native picker does -
- * a tick per value, not a tick per settle. The two channels are independent
- * because their platform support is not the same:
+ * a tick per value, not a tick per settle.
  *
- * - Vibration is the Vibration API, which Android Chrome implements and iOS
- *   Safari never has. Every iOS browser is WebKit underneath, so iOS Chrome
- *   does not have it either. There is no polyfill - a page cannot reach the
- *   Taptic Engine - so on iOS this channel is simply absent and the sound is
- *   what carries the feel.
+ * The haptic channel has three tiers, tried in order, because no single API
+ * covers every platform:
  *
- * - Sound is Web Audio, which works everywhere, and is synthesized here rather
- *   than loaded so the library ships no binary asset.
+ * 1. Capacitor's Haptics plugin, when the picker is running inside a native
+ *    shell that has it. This is the only way to reach the iOS Taptic Engine,
+ *    and on Android it drives the platform haptic APIs rather than the raw
+ *    motor - so it is the best tier on both, not an iOS workaround.
+ *
+ * 2. The Vibration API, which Android Chrome implements and iOS Safari never
+ *    has. Every iOS browser is WebKit underneath, so iOS Chrome lacks it too.
+ *
+ * 3. Nothing. A plain web page on iOS cannot produce haptics at all, and the
+ *    sound is what carries the feel there.
+ *
+ * Sound is Web Audio, works everywhere, and is synthesized rather than loaded
+ * so the library ships no binary asset. The tick is a short burst of highpassed
+ * white noise: a real detent is broadband, and any oscillator - however brief -
+ * is heard as a beep before it is heard as a click.
+ *
+ * Capacitor is reached through the global it injects rather than imported, so
+ * this library keeps its empty dependency list and plain web consumers install
+ * nothing. That costs the plugin's own types, hence the local interfaces below
+ * describing the small surface actually called.
  */
+
+/** The part of Capacitor's Haptics plugin this uses. */
+interface HapticsPlugin {
+  /**
+   * The detent tick. This is what UIPickerView itself calls on iOS, and it
+   * feels materially more correct than a light impact - an impact reads as
+   * hitting something, a selection change as passing a notch.
+   */
+  selectionChanged?: () => Promise<void>;
+
+  /** Called once as a selection gesture begins, so the engine can warm up. */
+  selectionStart?: () => Promise<void>;
+
+  /** Called once when the gesture is over. */
+  selectionEnd?: () => Promise<void>;
+}
+
+/** The part of the injected Capacitor global this uses. */
+interface CapacitorGlobal {
+  isNativePlatform?: () => boolean;
+  isPluginAvailable?: (name: string) => boolean;
+  Plugins?: { Haptics?: HapticsPlugin };
+}
 
 /**
  * Vibration length in ms. Short enough to read as a tick rather than a buzz -
@@ -22,21 +59,40 @@
  */
 const vibrateDuration = 8;
 
-/** Oscillator frequency (Hz) for the click. Close to the iOS picker's pitch. */
-const clickFrequency = 1100;
+/**
+ * Corner frequency (Hz) of the highpass the click's noise runs through.
+ *
+ * The tick is a filtered noise burst rather than an oscillator because that is
+ * what a real detent is: a broadband transient, not a pitch. An oscillator at
+ * any frequency reads as a beep, however short it is - the ear hears the note
+ * before it hears the click. Cutting everything below this leaves only the
+ * bright edge of the noise, which is the part that sounds like something
+ * mechanical passing a notch.
+ */
+const clickHighpass = 4000;
 
 /**
- * Length of the click envelope in seconds. A detent tick is a transient, not a
- * tone: long enough to be audible, short enough that a fast fling produces a
- * run of distinct ticks instead of a continuous drone.
+ * Length of the click envelope in seconds. Extremely short by design - at this
+ * duration the burst is heard as a single transient, and a fast fling stays a
+ * run of distinct ticks instead of smearing into noise.
  */
-const clickDuration = 0.028;
+const clickDuration = 0.006;
 
 /**
- * Peak gain of the click. Deliberately quiet - this plays on every value the
- * drum passes, and a fling can pass dozens in a second.
+ * Peak gain of the click. Louder than a tonal tick of the same perceived
+ * volume needs to be: the burst is six milliseconds long, so there is very
+ * little energy in it and the ear needs the amplitude to register the edge.
  */
-const clickGain = 0.05;
+const clickGain = 0.35;
+
+/**
+ * Length in seconds of the reusable white-noise buffer the clicks are cut from.
+ *
+ * Generated once and shared by every tick. Long enough that consecutive ticks
+ * start at different offsets and do not sound like a repeating sample, short
+ * enough to stay negligible in memory.
+ */
+const noiseDuration = 0.05;
 
 /**
  * Shortest gap (ms) between two ticks. A hard fling crosses detents faster than
@@ -53,8 +109,10 @@ const minInterval = 18;
  */
 export class ScrollPickerFeedback {
 
-  public haptics = false;
-  public sound = false;
+  // Mirrors of the component's inputs, pushed across on every change. The
+  // component owns the real defaults; these are overwritten before first use.
+  public haptics = true;
+  public sound = true;
 
   /**
    * Last detent a tick was fired for. Null until the first render seats it, so
@@ -67,28 +125,27 @@ export class ScrollPickerFeedback {
   private _context: AudioContext = null;
 
   /**
-   * Cached rather than re-queried per tick: matchMedia is a layout-adjacent
-   * read, and this runs inside the render path.
+   * Capacitor's Haptics plugin, or null when not running under one. Undefined
+   * until first looked up - the lookup walks a global and this is consulted
+   * from the render path, so it resolves once and is cached either way.
    */
-  private _reduced = false;
+  private _plugin: HapticsPlugin | null = undefined;
 
-  private _reducedQuery: MediaQueryList = null;
-  private _onReducedChange: () => void = null;
+  /** True between selectionStart and selectionEnd, so they stay paired. */
+  private _selecting = false;
 
-  constructor() {
-    if (typeof matchMedia !== 'function') {
-      return;
-    }
+  /** Detaches the document-level unlock listeners, once they have fired. */
+  private _unlockListeners: (() => void)[] = [];
 
-    this._reducedQuery = matchMedia('(prefers-reduced-motion: reduce)');
-    this._reduced = this._reducedQuery.matches;
-
-    this._onReducedChange = () => this._reduced = this._reducedQuery.matches;
-    this._reducedQuery.addEventListener('change', this._onReducedChange);
-  }
+  /**
+   * White noise every click is cut from. Built once on the first tick, because
+   * it needs the context's sample rate and the context does not exist until a
+   * gesture has armed it.
+   */
+  private _noise: AudioBuffer = null;
 
   private get _enabled(): boolean {
-    return (this.haptics || this.sound) && !this._reduced;
+    return this.haptics || this.sound;
   }
 
   /**
@@ -100,7 +157,11 @@ export class ScrollPickerFeedback {
    * the drag that follows actually audible.
    */
   public arm(): void {
-    if (!this.sound || this._reduced) {
+    if (this.haptics) {
+      this._startSelection();
+    }
+
+    if (!this.sound) {
       return;
     }
 
@@ -114,11 +175,7 @@ export class ScrollPickerFeedback {
       this._context = new context();
     }
 
-    // Suspended is the normal state for a context built before a gesture, and
-    // also what iOS drops it to after the page has been backgrounded.
-    if (this._context.state === 'suspended') {
-      this._context.resume().catch(() => { /* left suspended; ticks stay silent */ });
-    }
+    this._resume();
   }
 
   /**
@@ -133,6 +190,7 @@ export class ScrollPickerFeedback {
     if (this._detent === detent) {
       return;
     }
+
 
     // The first report seats the tracker without firing: the drum is being
     // placed on its starting value, which the user did not scroll to.
@@ -154,17 +212,103 @@ export class ScrollPickerFeedback {
     this._detent = null;
   }
 
-  public destroy(): void {
-    if (this._reducedQuery && this._onReducedChange) {
-      this._reducedQuery.removeEventListener('change', this._onReducedChange);
-      this._reducedQuery = null;
-      this._onReducedChange = null;
+  /**
+   * Closes the native selection gesture opened by `arm`. Called when the drum
+   * comes to rest, so the engine is not left holding a gesture open.
+   */
+  public settle(): void {
+    if (!this._selecting) {
+      return;
     }
+
+    this._selecting = false;
+
+    this._resolvePlugin()?.selectionEnd?.()
+      .catch(() => { /* bridge gone; nothing to close */ });
+  }
+
+  public destroy(): void {
+    this.settle();
+    this._releaseUnlock();
+
+    this._noise = null;
 
     if (this._context) {
       this._context.close().catch(() => { /* already closed by teardown */ });
       this._context = null;
     }
+  }
+
+  /**
+   * Resumes the context, and if that is refused, waits for an event the browser
+   * will accept.
+   *
+   * A wheel is not user activation - the HTML spec excludes it and Chrome
+   * refuses to resume from one - so a picker driven only by the wheel would
+   * resume, be refused, and stay suspended forever while every tick scheduled
+   * itself into a context that never runs. Listening for the next real press
+   * anywhere on the page is what gets those pickers audible, rather than
+   * requiring the user to happen to press on the drum itself.
+   */
+  private _resume(): void {
+    if (!this._context || this._context.state !== 'suspended') {
+      return;
+    }
+
+    this._context.resume().catch(() => { /* refused; the listeners below retry */ });
+
+    if (this._unlockListeners.length || typeof document === 'undefined') {
+      return;
+    }
+
+    const unlock = (): void => {
+      this._context?.resume()
+        .then(() => this._releaseUnlock())
+        .catch(() => { /* still refused; the listeners stay for the next press */ });
+    };
+
+    // The events the HTML spec counts as activation triggers. Capture phase and
+    // passive, so nothing here can interfere with the page's own handlers.
+    for (const type of ['pointerdown', 'mousedown', 'keydown', 'touchend']) {
+      document.addEventListener(type, unlock, { capture: true, passive: true });
+      this._unlockListeners.push(() => {
+        document.removeEventListener(type, unlock, { capture: true });
+      });
+    }
+  }
+
+  private _releaseUnlock(): void {
+    this._unlockListeners.forEach((off: () => void) => off());
+    this._unlockListeners = [];
+  }
+
+  /**
+   * Opens a native selection gesture, if the plugin supports the pairing.
+   *
+   * Optional because `selectionStart`/`selectionEnd` are a refinement: a plugin
+   * exposing only `selectionChanged` still ticks correctly without them.
+   */
+  private _startSelection(): void {
+    if (this._selecting) {
+      return;
+    }
+
+    const start = this._resolvePlugin()?.selectionStart;
+
+    if (!start) {
+      return;
+    }
+
+    this._selecting = true;
+
+    start.call(this._resolvePlugin())
+      .catch(() => {
+        // Opening failed, so there is no gesture to close. Clearing the flag
+        // keeps `settle` honest and lets the next gesture try again rather
+        // than being skipped as already-open. Ticks fire on their own either
+        // way - the pairing is a refinement, not a prerequisite.
+        this._selecting = false;
+      });
   }
 
   private _tick(): void {
@@ -185,9 +329,57 @@ export class ScrollPickerFeedback {
     }
   }
 
+  /**
+   * Capacitor's Haptics plugin when one is reachable, else null.
+   *
+   * Guarded at every step rather than assumed: the global exists in a native
+   * shell but the plugin is a separate install, and on the web the global is
+   * absent entirely. `isNativePlatform` also returns false for a Capacitor app
+   * served in a browser, where the plugin cannot do anything.
+   */
+  private _resolvePlugin(): HapticsPlugin | null {
+    if (this._plugin !== undefined) {
+      return this._plugin;
+    }
+
+    this._plugin = null;
+
+    if (typeof window === 'undefined') {
+      return this._plugin;
+    }
+
+    const capacitor: CapacitorGlobal = (window as any).Capacitor;
+
+    if (!capacitor?.isNativePlatform?.()) {
+      return this._plugin;
+    }
+
+    // Newer Capacitor registers plugins lazily, so the availability check is
+    // the reliable test; the Plugins bag is the fallback for older versions.
+    const available = capacitor.isPluginAvailable?.('Haptics') ?? true;
+    const plugin = capacitor.Plugins?.Haptics;
+
+    if (available && typeof plugin?.selectionChanged === 'function') {
+      this._plugin = plugin;
+    }
+
+    return this._plugin;
+  }
+
   private _vibrate(): void {
-    // Absent on iOS at any version, and present but a no-op on desktop Chrome
-    // where there is no motor. Both cases are silent by design.
+    const plugin = this._resolvePlugin();
+
+    if (plugin) {
+      // Fire and forget. These resolve on a round trip to the native layer,
+      // and a tick that has already happened is not worth awaiting - nor worth
+      // an unhandled rejection if the bridge is torn down mid-gesture.
+      plugin.selectionChanged().catch(() => { /* bridge gone or plugin refused */ });
+
+      return;
+    }
+
+    // No native bridge. Absent on iOS at any version, and present but a no-op
+    // on desktop Chrome where there is no motor. Both cases are silent.
     if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') {
       return;
     }
@@ -201,38 +393,79 @@ export class ScrollPickerFeedback {
     }
   }
 
+  /** The shared white-noise buffer, generated on first use. */
+  private _noiseBuffer(context: AudioContext): AudioBuffer {
+    if (this._noise) {
+      return this._noise;
+    }
+
+    const samples = Math.floor(context.sampleRate * noiseDuration);
+
+    this._noise = context.createBuffer(1, samples, context.sampleRate);
+
+    const channel = this._noise.getChannelData(0);
+
+    for (let i = 0; i < samples; i++) {
+      channel[i] = Math.random() * 2 - 1;
+    }
+
+    return this._noise;
+  }
+
   private _click(): void {
-    if (!this._context || this._context.state !== 'running') {
+    if (!this._context) {
       return;
     }
 
-    const context = this._context;
+    // A context resumed inside this same gesture is often still 'suspended'
+    // here: resume() is async and the first ticks of a drag arrive before it
+    // settles. Nudging it again and scheduling the click anyway is what makes
+    // the opening ticks audible - bailing on the state instead silently
+    // dropped every tick of the first drag after load, which on iOS is every
+    // drag, since the context there always starts suspended.
+    if (this._context.state === 'suspended') {
+      this._resume();
+    }
+
+    // 'closed' is terminal - teardown has run and the nodes below would throw.
+    if (this._context.state === 'closed') {
+      return;
+    }
+
+    this._burst(this._context);
+  }
+
+  /** Schedules one highpassed noise burst on the context's own clock. */
+  private _burst(context: AudioContext): void {
     const start = context.currentTime;
-    const oscillator = context.createOscillator();
+    const source = context.createBufferSource();
+    const highpass = context.createBiquadFilter();
     const gain = context.createGain();
 
-    oscillator.frequency.value = clickFrequency;
+    source.buffer = this._noiseBuffer(context);
+    highpass.type = 'highpass';
+    highpass.frequency.value = clickHighpass;
 
-    // A square wave gives the click its edge - a sine at this length reads as a
-    // soft blip rather than a detent snapping past.
-    oscillator.type = 'square';
-
-    // Ramped to near-silence rather than stopped flat. Cutting a waveform off
-    // mid-cycle puts a step in the signal, which is audible as a pop on top of
-    // the click. Exponential ramps cannot reach zero, hence the small floor.
+    // Ramped to near-silence rather than stopped flat. Cutting the signal off
+    // mid-burst puts a step in it, which is audible as a pop on top of the
+    // click. Exponential ramps cannot reach zero, hence the small floor.
     gain.gain.setValueAtTime(clickGain, start);
     gain.gain.exponentialRampToValueAtTime(0.0001, start + clickDuration);
 
-    oscillator.connect(gain);
+    source.connect(highpass);
+    highpass.connect(gain);
     gain.connect(context.destination);
 
-    oscillator.start(start);
-    oscillator.stop(start + clickDuration);
+    // Each burst starts at a random offset in the buffer, so a run of ticks is
+    // not the same few milliseconds of noise repeating - which the ear picks up
+    // as a tone very quickly.
+    source.start(start, Math.random() * (noiseDuration - clickDuration), clickDuration);
 
     // Nodes are single-use and pile up until collected otherwise; a long fling
-    // creates one pair per detent.
-    oscillator.onended = () => {
-      oscillator.disconnect();
+    // creates one set per detent.
+    source.onended = () => {
+      source.disconnect();
+      highpass.disconnect();
       gain.disconnect();
     };
   }

@@ -1,0 +1,198 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Picker tick sound bench</title>
+<style>
+  :root { color-scheme: dark; }
+  body { font: 14px/1.5 system-ui, sans-serif; margin: 0; padding: 24px 24px 64px;
+         background: #111; color: #eee; }
+  h1 { font-size: 17px; margin: 0 0 4px; }
+  p.sub { margin: 0 0 20px; color: #999; }
+  .card { border: 1px solid #333; border-radius: 8px; padding: 14px 16px; margin-bottom: 12px;
+          background: #1a1a1a; }
+  .card h2 { font-size: 14px; margin: 0 0 4px; }
+  .card .desc { color: #999; font-size: 12.5px; margin: 0 0 10px; }
+  button { font: inherit; padding: 7px 13px; margin-right: 8px; cursor: pointer;
+           background: #2a2a2a; color: #eee; border: 1px solid #444; border-radius: 6px; }
+  button:hover { background: #3a3a3a; }
+  button.run { background: #2d4a2d; border-color: #3d6a3d; }
+  button.run:hover { background: #3a5f3a; }
+  .controls { position: sticky; top: 0; background: #111; padding: 12px 0 14px;
+              border-bottom: 1px solid #333; margin-bottom: 18px; z-index: 1; }
+  label { display: inline-block; margin-right: 18px; font-size: 13px; color: #ccc; }
+  input[type=range] { vertical-align: middle; width: 130px; }
+  output { display: inline-block; min-width: 44px; font-family: ui-monospace, monospace;
+           color: #6ec96e; }
+  .hint { color: #e6c07b; font-size: 12.5px; }
+</style>
+
+<h1>Picker tick sound bench</h1>
+<p class="sub">Each card is a different synthesis approach. Play a run, pick the one you like,
+and tell me the name &mdash; I'll wire it into the picker.</p>
+
+<div class="controls">
+  <label>Gain <input id="gain" type="range" min="0.02" max="0.6" step="0.01" value="0.18">
+    <output id="gainOut">0.18</output></label>
+  <label>Run speed <input id="rate" type="range" min="60" max="400" step="10" value="130">
+    <output id="rateOut">130ms</output></label>
+  <span class="hint">Adjust, then replay any card.</span>
+</div>
+
+<div id="cards"></div>
+
+<script>
+let ctx = null;
+function ensure() {
+  if (!ctx) {
+    const Ctor = window.AudioContext || window.webkitAudioContext;
+    ctx = new Ctor();
+  }
+  if (ctx.state === 'suspended') { ctx.resume().catch(() => {}); }
+  return ctx;
+}
+
+const gainEl = document.getElementById('gain');
+const rateEl = document.getElementById('rate');
+const gainOut = document.getElementById('gainOut');
+const rateOut = document.getElementById('rateOut');
+gainEl.addEventListener('input', () => gainOut.textContent = gainEl.value);
+rateEl.addEventListener('input', () => rateOut.textContent = rateEl.value + 'ms');
+
+const vol = () => parseFloat(gainEl.value);
+
+// ---- One-off noise buffer, reused by the noise-based ticks. -----------------
+let noiseBuf = null;
+function noise() {
+  if (!noiseBuf) {
+    const n = Math.floor(ctx.sampleRate * 0.05);
+    noiseBuf = ctx.createBuffer(1, n, ctx.sampleRate);
+    const d = noiseBuf.getChannelData(0);
+    for (let i = 0; i < n; i++) { d[i] = Math.random() * 2 - 1; }
+  }
+  const src = ctx.createBufferSource();
+  src.buffer = noiseBuf;
+  return src;
+}
+
+// ---- The tick designs. Each schedules itself at time `t`. -------------------
+const designs = [
+  {
+    name: 'Current (what ships today)',
+    desc: '1100Hz square, 28ms exponential decay, gain 0.05. Soft and easy to miss.',
+    play(t) {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'square'; o.frequency.value = 1100;
+      g.gain.setValueAtTime(0.05, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.028);
+      o.connect(g); g.connect(ctx.destination);
+      o.start(t); o.stop(t + 0.028);
+    },
+  },
+  {
+    name: 'Filtered noise burst',
+    desc: 'White noise through a bandpass at 2.5kHz, 12ms. Closest to a real detent — a click, not a tone.',
+    play(t) {
+      const src = noise(), bp = ctx.createBiquadFilter(), g = ctx.createGain();
+      bp.type = 'bandpass'; bp.frequency.value = 2500; bp.Q.value = 1.2;
+      g.gain.setValueAtTime(vol(), t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.012);
+      src.connect(bp); bp.connect(g); g.connect(ctx.destination);
+      src.start(t); src.stop(t + 0.012);
+    },
+  },
+  {
+    name: 'Sharp noise click (crispest)',
+    desc: 'Highpassed noise at 4kHz, 6ms. Very short and bright — the "tk" of a keyboard.',
+    play(t) {
+      const src = noise(), hp = ctx.createBiquadFilter(), g = ctx.createGain();
+      hp.type = 'highpass'; hp.frequency.value = 4000;
+      g.gain.setValueAtTime(vol() * 1.3, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.006);
+      src.connect(hp); hp.connect(g); g.connect(ctx.destination);
+      src.start(t); src.stop(t + 0.006);
+    },
+  },
+  {
+    name: 'Pitch-drop blip',
+    desc: '1800Hz falling to 600Hz over 15ms, triangle. Has a tiny "pluck" character.',
+    play(t) {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'triangle';
+      o.frequency.setValueAtTime(1800, t);
+      o.frequency.exponentialRampToValueAtTime(600, t + 0.015);
+      g.gain.setValueAtTime(vol(), t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.018);
+      o.connect(g); g.connect(ctx.destination);
+      o.start(t); o.stop(t + 0.018);
+    },
+  },
+  {
+    name: 'Noise + tone hybrid',
+    desc: 'A noise transient for the attack plus a short 2kHz sine for body. Crisp with a bit of weight.',
+    play(t) {
+      const src = noise(), hp = ctx.createBiquadFilter(), ng = ctx.createGain();
+      hp.type = 'highpass'; hp.frequency.value = 3000;
+      ng.gain.setValueAtTime(vol() * 0.9, t);
+      ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.007);
+      src.connect(hp); hp.connect(ng); ng.connect(ctx.destination);
+      src.start(t); src.stop(t + 0.007);
+
+      const o = ctx.createOscillator(), og = ctx.createGain();
+      o.type = 'sine'; o.frequency.value = 2000;
+      og.gain.setValueAtTime(vol() * 0.5, t);
+      og.gain.exponentialRampToValueAtTime(0.0001, t + 0.014);
+      o.connect(og); og.connect(ctx.destination);
+      o.start(t); o.stop(t + 0.014);
+    },
+  },
+  {
+    name: 'Square, short + loud',
+    desc: 'The current design but 10ms and much louder. Minimal change from what ships.',
+    play(t) {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'square'; o.frequency.value = 1600;
+      g.gain.setValueAtTime(vol(), t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.010);
+      o.connect(g); g.connect(ctx.destination);
+      o.start(t); o.stop(t + 0.010);
+    },
+  },
+];
+
+// ---- Render the cards. ------------------------------------------------------
+const wrap = document.getElementById('cards');
+designs.forEach((d) => {
+  const card = document.createElement('div');
+  card.className = 'card';
+
+  const h = document.createElement('h2');
+  h.textContent = d.name;
+
+  const p = document.createElement('p');
+  p.className = 'desc';
+  p.textContent = d.desc;
+
+  const one = document.createElement('button');
+  one.textContent = 'Single';
+  one.addEventListener('click', () => { ensure(); d.play(ctx.currentTime + 0.02); });
+
+  const run = document.createElement('button');
+  run.className = 'run';
+  run.textContent = 'Play run of 12';
+  run.addEventListener('click', () => {
+    ensure();
+    const gap = parseInt(rateEl.value, 10) / 1000;
+    for (let i = 0; i < 12; i++) { d.play(ctx.currentTime + 0.05 + i * gap); }
+  });
+
+  const fling = document.createElement('button');
+  fling.textContent = 'Fling (accelerating)';
+  fling.addEventListener('click', () => {
+    ensure();
+    let t = ctx.currentTime + 0.05, gap = 0.035;
+    for (let i = 0; i < 22; i++) { d.play(t); t += gap; gap *= 1.13; }
+  });
+
+  card.append(h, p, one, run, fling);
+  wrap.appendChild(card);
+});
+</script>

@@ -97,15 +97,28 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
   @Input({ transform: booleanAttribute }) public infinite = false;
 
   /**
-   * Vibrates once per value the drum passes. Android only - iOS has no web API
-   * for the Taptic Engine at any version, so this is silently inert there and
-   * `sound` is what carries the feel. Off by default: a library that buzzes
-   * unasked is a surprise.
+   * Vibrates once per value the drum passes, the way a native picker does.
+   *
+   * Reaches the iOS Taptic Engine through Capacitor's Haptics plugin when the
+   * app runs in a native shell, and falls back to the Vibration API on Android
+   * web. A plain web page on iOS has neither, so this is silently inert there
+   * and `sound` is what carries the feel.
+   *
+   * Set `[haptics]="false"` to silence it.
    */
-  @Input({ transform: booleanAttribute }) public haptics = false;
+  @Input({ transform: booleanAttribute }) public haptics = true;
 
-  /** Clicks once per value the drum passes, the way a native picker does. */
-  @Input({ transform: booleanAttribute }) public sound = false;
+  /**
+   * Clicks once per value the drum passes, the way a native picker does.
+   *
+   * Set `[sound]="false"` to silence it. Deliberately not gated on
+   * `prefers-reduced-motion`: that setting is about vestibular safety - motion
+   * that makes people dizzy - and a detent click is neither motion nor a
+   * trigger for it. Honouring it here only silenced the picker for everyone who
+   * turns Windows animation effects off, which is a lot of people who very much
+   * still want to hear their clicks.
+   */
+  @Input({ transform: booleanAttribute }) public sound = true;
 
   @Input()
   @HostBinding('style.width') public width;
@@ -341,9 +354,10 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
       return;
     }
 
-    // A wheel event counts as a gesture for autoplay purposes, so the audio
-    // channel can be opened from here too - otherwise a picker driven only by
-    // trackpad or mouse wheel would never make a sound.
+    // A wheel is NOT user activation - the HTML spec excludes it, and Chrome
+    // refuses to resume an AudioContext from one. Arming here still builds the
+    // context and starts the feedback's own wait for the next real press, which
+    // is what eventually makes a wheel-driven picker audible.
     this._feedback.arm();
 
     if (Math.abs(event.deltaY) >= WheelNotchThreshold) {
@@ -936,6 +950,10 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
   /** Emits the settled value inside Angular once motion has stopped. */
   private _finish(): void {
     const index = this._resolveIndex(Math.round(this._offset));
+
+    // The drum has come to rest, so the native selection gesture opened at
+    // pointerdown is closed here rather than left hanging.
+    this._feedback.settle();
 
     this._zone.run(() => {
       this._commitIndex(index);
