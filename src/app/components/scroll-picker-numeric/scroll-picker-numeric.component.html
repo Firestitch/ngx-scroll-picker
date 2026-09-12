@@ -5,6 +5,8 @@
     <fs-scroll-picker
         class="column column-affix"
         [values]="prefixItems"
+        [haptics]="haptics"
+        [sound]="sound"
         [ngModel]="prefix"
         (ngModelChange)="prefixChanged($event)">
     </fs-scroll-picker>
@@ -16,6 +18,8 @@
       class="column column-whole"
       [values]="wholeValues"
       [infinite]="infinite"
+      [haptics]="haptics"
+      [sound]="sound"
       [ngModel]="whole"
       (ngModelChange)="wholeChanged($event)">
   </fs-scroll-picker>
@@ -27,6 +31,8 @@
         class="column column-fraction"
         [values]="fractionValues"
         infinite
+        [haptics]="haptics"
+        [sound]="sound"
         [ngModel]="fraction"
         (ngModelChange)="fractionChanged($event)">
     </fs-scroll-picker>
@@ -36,6 +42,8 @@
     <fs-scroll-picker
         class="column column-affix"
         [values]="suffixItems"
+        [haptics]="haptics"
+        [sound]="sound"
         [ngModel]="suffix"
         (ngModelChange)="suffixChanged($event)">
     </fs-scroll-picker>

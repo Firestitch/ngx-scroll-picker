@@ -4,6 +4,7 @@ import { NgClass, NgTemplateOutlet } from '@angular/common';
 
 import { ScrollPickerTemplateComponent } from '../../directives/scroll-picker-template.directive';
 
+import { ScrollPickerFeedback } from './scroll-picker.feedback';
 import {
   Deceleration,
   FlingHandoffDistance,
@@ -95,6 +96,17 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
    */
   @Input({ transform: booleanAttribute }) public infinite = false;
 
+  /**
+   * Vibrates once per value the drum passes. Android only - iOS has no web API
+   * for the Taptic Engine at any version, so this is silently inert there and
+   * `sound` is what carries the feel. Off by default: a library that buzzes
+   * unasked is a surprise.
+   */
+  @Input({ transform: booleanAttribute }) public haptics = false;
+
+  /** Clicks once per value the drum passes, the way a native picker does. */
+  @Input({ transform: booleanAttribute }) public sound = false;
+
   @Input()
   @HostBinding('style.width') public width;
 
@@ -176,10 +188,13 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
   private _onTouched: () => void = noop;
   private _onChange: (value: any) => void = noop;
 
+  private _feedback = new ScrollPickerFeedback();
+
   private _cdRef = inject(ChangeDetectorRef);
   private _zone = inject(NgZone);
 
   public ngOnInit(): void {
+    this._syncFeedback();
     this.updateValues();
     this.updateDisabled();
 
@@ -193,6 +208,10 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
   }
 
   public ngOnChanges(changes: SimpleChanges): void {
+    if (changes.haptics || changes.sound) {
+      this._syncFeedback();
+    }
+
     if (changes.valuesMin && !changes.valuesMin.firstChange || changes.valuesMax && !changes.valuesMax.firstChange) {
       if (this.valuesMin !== undefined && this.valuesMax !== undefined) {
         this.updateValues();
@@ -277,6 +296,7 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
   }
 
   public ngOnDestroy(): void {
+    this._feedback.destroy();
     this._cancelFrames();
     this._clearWheelTimer();
     this._endWheelGesture();
@@ -320,6 +340,11 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
     if (!this.values.length) {
       return;
     }
+
+    // A wheel event counts as a gesture for autoplay purposes, so the audio
+    // channel can be opened from here too - otherwise a picker driven only by
+    // trackpad or mouse wheel would never make a sound.
+    this._feedback.arm();
 
     if (Math.abs(event.deltaY) >= WheelNotchThreshold) {
       // A notched mouse wheel. One notch moves exactly one item and settles
@@ -367,6 +392,12 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
       return;
     }
 
+    this._trackWheelDelta(delta, event.timeStamp);
+    this._armWheelIdle();
+  }
+
+  /** Moves the drum by one trackpad delta and records it for the release velocity. */
+  private _trackWheelDelta(delta: number, time: number): void {
     this._cancelFrame();
     this._mode = 'drag';
     this._velocity = 0;
@@ -375,14 +406,12 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
     this._offset = this._applyBounds(this._rawOffset);
 
     this._wheelSamples = pruneSamples(
-      [...this._wheelSamples, { time: event.timeStamp, position: this._offset }],
-      event.timeStamp,
+      [...this._wheelSamples, { time, position: this._offset }],
+      time,
     );
 
     this._commitFromOffset();
     this._scheduleRender();
-
-    this._armWheelIdle();
   }
 
   /**
@@ -542,18 +571,17 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
 
     const el = this.scrollContainer.nativeElement;
 
+    // The one reliable user gesture in the picker's life. An AudioContext built
+    // anywhere else starts suspended and the first clicks are silent, so the
+    // audio channel is opened here, before the drag it will play under.
+    this._feedback.arm();
+
     // Grabbing a moving drum stops it dead, like catching a spinning wheel.
     this._cancelFrame();
     this._clearWheelTimer();
     this._endWheelGesture();
 
-    this._pointerId = event.pointerId;
-    this._pointerStartY = event.clientY;
-    this._pointerStartOffset = this._rawOffset;
-    this._pointerMoved = false;
-    this._mode = 'drag';
-    this._velocity = 0;
-    this._samples = [{ time: event.timeStamp, position: this._offset }];
+    this._beginGesture(event);
 
     // Capture routes every later event for this pointer to this element, so the
     // gesture still terminates when the finger leaves the drum or the browser
@@ -589,6 +617,17 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
     if (event.pointerType === 'mouse') {
       event.preventDefault();
     }
+  }
+
+  /** Seats the drag state on the pointer that just went down. */
+  private _beginGesture(event: PointerEvent): void {
+    this._pointerId = event.pointerId;
+    this._pointerStartY = event.clientY;
+    this._pointerStartOffset = this._rawOffset;
+    this._pointerMoved = false;
+    this._mode = 'drag';
+    this._velocity = 0;
+    this._samples = [{ time: event.timeStamp, position: this._offset }];
   }
 
   private _onPointerMove(event: PointerEvent): void {
@@ -707,6 +746,7 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
     }
 
     event.preventDefault();
+    this._feedback.arm();
     this._zone.run(() => this._onTouched());
 
     const target = event.key === 'Home'
@@ -771,6 +811,9 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
     this._snapVelocity = 0;
     this._offset = this._rawOffset = offset;
 
+    // Nobody scrolled here - a value was written or a column was rebuilt - so
+    // the render below re-seats the tracker rather than ticking for the jump.
+    this._feedback.reset();
     this._render();
   }
 
@@ -940,6 +983,12 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
     return Math.max(0, Math.min(this.values.length - 1, offset));
   }
 
+  /** Pushes the current input values onto the feedback emitter. */
+  private _syncFeedback(): void {
+    this._feedback.haptics = this.haptics;
+    this._feedback.sound = this.sound;
+  }
+
   /** The detent a relative step counts from. */
   private _snapBase(): number {
     return this._mode === 'idle' ? Math.round(this._offset) : this._snapTarget;
@@ -1041,6 +1090,13 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
     const base = Math.round(centre);
     const max = this.values.length - 1;
     const slots: ScrollPickerSlot[] = [];
+
+    // Every path that moves the drum renders, so one detent watcher here covers
+    // drag, fling, snap, wheel and keyboard alike. Deliberately not hung off
+    // `_commitIndex`, which skips disabled values and only fires on a real model
+    // change - feedback would then go silent while the drum visibly spins
+    // through a disabled stretch.
+    this._feedback.detent(base);
 
     for (let i = -VisibleRadius; i <= VisibleRadius; i++) {
       const offset = base + i;

@@ -87,6 +87,12 @@ export class ScrollPickerNumericComponent implements OnChanges, ControlValueAcce
   /** Wraps the whole-number column past its ends instead of rubber-banding. */
   @Input({ transform: booleanAttribute }) public infinite = false;
 
+  /** Vibrates once per value passed, on every column. Android only - see the picker. */
+  @Input({ transform: booleanAttribute }) public haptics = false;
+
+  /** Clicks once per value passed, on every column. */
+  @Input({ transform: booleanAttribute }) public sound = false;
+
   @Input()
   @HostBinding('style.width') public width;
 
