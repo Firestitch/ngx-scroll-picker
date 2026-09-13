@@ -84,82 +84,67 @@ const vibrateDuration = 8;
  * The trap worth recording: the LRA's resonance, widely measured near 230Hz, is
  * what the HAND feels. Building the audible part around that figure produces a
  * low thump, and the real picker is a bright "tk" - what the ear gets is the
- * enclosure ringing, which sits far higher. Both components here are
- * deliberately well above the haptic resonance for that reason.
+ * enclosure ringing, which sits far higher. Two earlier attempts here were
+ * pitched near the haptic resonance and both sounded wrong for that reason.
+ * The tick is now noise alone, high and very short.
+ *
+ * One thing iOS does that is worth keeping: its tactile output holds a constant
+ * frequency while the AUDIO pitch falls as the wheel slows (described in Apple's
+ * haptic patents, which is also the only documented figure anywhere near this -
+ * a 270Hz "MicroTap" on the tactile side). `_rateFor` reproduces that, and it is
+ * a large part of why a fling sounds like a wheel winding down rather than a
+ * rattle at one note.
  */
 
 /**
- * Total rendered length of the tick, in seconds. Dry - no tail, no reverb.
+ * Total rendered length of the tick, in seconds.
  *
- * Short: the audible event is a tiny enclosure transient, over almost before it
- * has started. Anything longer starts to read as a tone.
+ * Three milliseconds. That is short enough that the event has no duration the
+ * ear can hold on to - it registers as an edge rather than a sound, which is
+ * exactly what a detent passing is.
  */
-const tickDuration = 0.012;
+const tickDuration = 0.003;
 
 /**
- * Where the body's pitch sweep begins, in Hz.
+ * Centre frequency (Hz) of the bandpass shaping the noise.
  *
- * Kept well above the LRA's own resonance. The actuator resonates near 230Hz
- * and that is what the hand feels, but it is NOT what the ear hears - tuning
- * the audible component to the haptic frequency produces a low thump, where
- * the real picker is a bright "tk". What reaches the ear is the case ringing,
- * which sits far higher, so the body here is a high click rather than a thud.
+ * Very high, and chosen by ear against the Clock app's timer wheel rather than
+ * derived. Nobody has published the audible click's frequency - Apple's patents
+ * document the haptic side (a 270Hz "MicroTap") and say nothing about what the
+ * speaker emits - so this is the one number here that came from listening.
  */
-const bodyStartFrequency = 2600;
-
-/** Where it lands, in Hz. Falling rather than steady is what avoids a beep. */
-const bodyEndFrequency = 1500;
-
-/** Seconds over which the body sweeps down. Fast, so it is heard as a click. */
-const bodySweep = 0.004;
+const clickFrequency = 9000;
 
 /**
- * Peak gain of the body component.
- *
- * Quiet relative to the click: on a real device the pitched part is mostly felt
- * rather than heard, and leaning on it is what made this sound like a thump.
+ * Q of that bandpass. Deliberately broad: at this width the result is bright
+ * noise rather than a pitched ping, which is what keeps it a "tk" and not a
+ * beep.
  */
-const bodyGain = 0.18;
+const clickQ = 0.3;
 
-/** Body attack in seconds. Effectively instantaneous, as an impulse is. */
-const bodyAttack = 0.0005;
+/** Seconds of noise the click is cut from. The whole tick, at this length. */
+const clickNoise = 0.003;
 
-/** Seconds by which the body has decayed to silence. */
-const bodyDecay = 0.009;
-
-/**
- * Centre frequency (Hz) of the bandpass shaping the click's noise.
- *
- * High, and the dominant component. This is the part that actually sounds like
- * the Timer wheel.
- */
-const clickFrequency = 4200;
-
-/** Q of that bandpass. Broad enough to stay noise rather than becoming pitched. */
-const clickQ = 0.9;
-
-/** Seconds of noise samples the click is cut from. */
-const clickNoise = 0.006;
-
-/** Peak gain of the click component - the loudest part of the tick. */
+/** Peak gain of the noise before the bus. */
 const clickGain = 0.85;
 
 /** Seconds by which the click has decayed to silence. */
-const clickDecay = 0.004;
+const clickDecay = 0.003;
 
 /**
- * Corner frequency (Hz) of the highpass on the summed bus.
+ * Corner frequency (Hz) of the highpass on the bus.
  *
- * Well up: there is nothing wanted down low, and cutting it is part of what
- * keeps the tick crisp instead of thumpy. Phone speakers reproduce very little
- * below this anyway.
+ * Sits just under the band itself, so everything below the click is gone. Left
+ * in rather than folded into the bandpass because the two shape different
+ * things: the bandpass picks the colour, this guarantees nothing low survives
+ * to muddy it.
  */
-const busHighpass = 900;
+const busHighpass = 6300;
 
 /**
  * Playback gain. A UI sound belongs under everything else on the page.
  */
-const tickGain = 0.25;
+const tickGain = 0.32;
 
 /**
  * Floor for exponential ramps. Web Audio cannot ramp to or from zero, so the
@@ -263,37 +248,18 @@ function renderTick(sampleRate: number): Promise<AudioBuffer> {
   bus.frequency.value = busHighpass;
   bus.connect(offline.destination);
 
-  renderBody(offline, bus);
   renderClick(offline, bus, sampleRate);
 
   return offline.startRendering();
 }
 
 /**
- * The actuator: a sine falling from `bodyStartFrequency`, which is what keeps
- * it from sounding like a beep.
- */
-function renderBody(offline: OfflineAudioContext, bus: AudioNode): void {
-  const body = offline.createOscillator();
-  const envelope = offline.createGain();
-
-  body.type = 'sine';
-  body.frequency.setValueAtTime(bodyStartFrequency, 0);
-  body.frequency.exponentialRampToValueAtTime(bodyEndFrequency, bodySweep);
-
-  envelope.gain.setValueAtTime(rampFloor, 0);
-  envelope.gain.exponentialRampToValueAtTime(bodyGain, bodyAttack);
-  envelope.gain.exponentialRampToValueAtTime(rampFloor, bodyDecay);
-
-  body.connect(envelope);
-  envelope.connect(bus);
-  body.start(0);
-  body.stop(tickDuration);
-}
-
-/**
- * The enclosure transient: band-limited noise, much shorter than the body, and
- * the part that makes the event read as a click rather than a thud.
+ * The whole tick: a very short burst of band-limited noise.
+ *
+ * There was a second, pitched component here modelling the actuator. It is
+ * gone: at three milliseconds behind a 6.3kHz highpass it was filtered into
+ * silence and only muddied what survived. What the ear gets from a real picker
+ * is the enclosure, and the enclosure is noise.
  */
 function renderClick(offline: OfflineAudioContext, bus: AudioNode, sampleRate: number): void {
   const samples = Math.ceil(sampleRate * clickNoise);
