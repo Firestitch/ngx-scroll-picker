@@ -301,7 +301,7 @@ export class ScrollPickerFeedback {
   // component owns the real defaults; these are overwritten before first use.
   public haptics = true;
   public sound = true;
-  public respectMute = true;
+  public respectMute = false;
 
   /**
    * Last detent a tick was fired for. Null until the first render seats it, so

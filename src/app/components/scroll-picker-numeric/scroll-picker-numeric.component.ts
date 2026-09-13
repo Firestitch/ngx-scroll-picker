@@ -94,7 +94,7 @@ export class ScrollPickerNumericComponent implements OnChanges, ControlValueAcce
   @Input({ transform: booleanAttribute }) public sound = true;
 
   /** Whether the tick obeys the iPhone ringer switch. See the picker. */
-  @Input({ transform: booleanAttribute }) public respectMute = true;
+  @Input({ transform: booleanAttribute }) public respectMute = false;
 
   @Input()
   @HostBinding('style.width') public width;

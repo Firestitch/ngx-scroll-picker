@@ -123,16 +123,20 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
   /**
    * Whether the tick obeys the iPhone's physical ringer switch.
    *
-   * True declares the audio ambient, which is what every native iOS UI sound
-   * does: it mixes with the user's music instead of ducking it, and a muted
-   * phone stays silent. Set false for a kiosk or a demo that has to be heard
-   * regardless - it ignores a signal the user set deliberately, so it is a
-   * poor default for a consumer app.
+   * Defaults to false, so the tick is heard regardless of the switch. The
+   * tidier choice is true - that declares the audio ambient, which is what
+   * native iOS UI sounds do, mixing with the user's music and going quiet on a
+   * muted phone. It is not the default because it makes the picker silent on
+   * any iPhone whose switch happens to be off, which is most of them, and a
+   * feature nobody can hear is worse than one that is slightly impolite.
+   *
+   * Set `[respectMute]="true"` for an app that would rather be well-behaved
+   * than audible.
    *
    * Only iOS Safari 16.4+ implements the API behind this; elsewhere it has no
    * effect either way.
    */
-  @Input({ transform: booleanAttribute }) public respectMute = true;
+  @Input({ transform: booleanAttribute }) public respectMute = false;
 
   @Input()
   @HostBinding('style.width') public width;
