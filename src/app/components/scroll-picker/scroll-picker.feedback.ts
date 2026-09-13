@@ -171,11 +171,33 @@ const rampFloor = 0.0001;
  * Random spread applied to playbackRate per tick, as a fraction.
  *
  * One pre-rendered buffer replayed identically sounds machine-gun-like on a
- * fast scroll. A real device is perfectly uniform, so this is a deliberate
- * departure - a few percent is enough to break up the repetition without the
+ * fast scroll. A few percent is enough to break up the repetition without the
  * pitch wobble becoming audible on its own.
  */
 const rateJitter = 0.03;
+
+/**
+ * Playback rate at the fastest and slowest ends of a scroll.
+ *
+ * The pitch falling as the drum slows is not a flourish - it is how the real
+ * thing works. Apple's haptic patents describe the tactile output holding a
+ * constant frequency while the AUDIO frequency is decreased as the picker slows,
+ * specifically to avoid driving the actuator harder. It is also the part people
+ * actually recognise: a fixed-pitch tick sounds like a machine, and a falling
+ * one sounds like a wheel coming to rest.
+ */
+const rateFast = 1.18;
+const rateSlow = 0.82;
+
+/**
+ * Tick gap (ms) treated as a fast scroll, and as a stopped one.
+ *
+ * The gap between detents is already a measure of scroll speed, so no velocity
+ * has to be plumbed through from the physics: crossings 30ms apart are a flick,
+ * and 260ms apart is a drum about to stop.
+ */
+const gapFast = 30;
+const gapSlow = 260;
 
 /**
  * Shortest gap (ms) between two ticks, and the highest-impact number here.
@@ -313,6 +335,7 @@ export class ScrollPickerFeedback {
   // component owns the real defaults; these are overwritten before first use.
   public haptics = true;
   public sound = true;
+  public respectMute = true;
 
   /**
    * Last detent a tick was fired for. Null until the first render seats it, so
@@ -369,10 +392,13 @@ export class ScrollPickerFeedback {
       // trailing it.
       shared.context = new context({ latencyHint: 'interactive' });
 
-      this._session();
       this._prerender();
     }
 
+    // Re-applied on every arm rather than only at construction: the category is
+    // driven by an input that can change after the context already exists, and
+    // the context is shared, so the picker being touched should win.
+    this._session();
     this._resume();
   }
 
@@ -493,18 +519,23 @@ export class ScrollPickerFeedback {
   }
 
   /**
-   * Declares this as ambient audio, where the browser supports saying so.
+   * Declares the audio session category, where the browser supports saying so.
    *
-   * 'ambient' mixes with whatever the user is already playing and obeys the
-   * hardware mute switch - both correct for a UI sound. The default category
-   * would duck their music to click at them, which is not a trade any picker
-   * should make on the app's behalf.
+   * 'ambient' is the correct category for a UI sound: it mixes with whatever
+   * the user is already playing rather than ducking it, and it obeys the iPhone
+   * ringer switch the way every native iOS UI sound does. The cost is that a
+   * muted phone is silent - which is the intent, but surprising if you are
+   * trying to demo the tick with the switch flipped off.
+   *
+   * 'playback' ignores the switch. It is left to the app because the trade is
+   * the app's to make: a kiosk or a demo may legitimately want to be heard, and
+   * a consumer app almost never should.
    */
   private _session(): void {
     const session = (navigator as any).audioSession;
 
     if (session) {
-      session.type = 'ambient';
+      session.type = this.respectMute ? 'ambient' : 'playback';
     }
   }
 
@@ -550,11 +581,14 @@ export class ScrollPickerFeedback {
 
   private _tick(): void {
     const now = performance.now();
+    const gap = now - this._lastTick;
 
-    if (now - this._lastTick < minInterval) {
+    if (gap < minInterval) {
       return;
     }
 
+    // Captured before `_lastTick` moves: the gap since the previous tick is the
+    // scroll speed the pitch is taken from.
     this._lastTick = now;
 
     if (this.haptics) {
@@ -562,8 +596,25 @@ export class ScrollPickerFeedback {
     }
 
     if (this.sound) {
-      this._click();
+      this._click(gap);
     }
+  }
+
+  /**
+   * Playback rate for a tick that arrived `gap` ms after the last one.
+   *
+   * Fast scroll gives a higher pitch, a slowing one lower, which is what makes
+   * a fling audibly wind down rather than rattling at one note. The first tick
+   * of a gesture has no previous tick to measure against, so it starts at the
+   * fast end - a gesture always begins with movement.
+   */
+  private _rateFor(gap: number): number {
+    const span = gapSlow - gapFast;
+    const clamped = Math.max(gapFast, Math.min(gapSlow, gap));
+    const slowness = (clamped - gapFast) / span;
+    const rate = rateFast + (rateSlow - rateFast) * slowness;
+
+    return rate * (1 + (Math.random() * 2 - 1) * rateJitter);
   }
 
   /**
@@ -630,10 +681,12 @@ export class ScrollPickerFeedback {
     }
   }
 
-  private _click(): void {
+  private _click(gap: number): void {
     if (!shared.context) {
       return;
     }
+
+    const rate = this._rateFor(gap);
 
     // A context resumed inside this same gesture is often still 'suspended'
     // here: resume() is async and the first ticks of a drag arrive before it
@@ -652,19 +705,20 @@ export class ScrollPickerFeedback {
       return;
     }
 
-    this._play(shared.context, shared.tick);
+    this._play(shared.context, shared.tick, rate);
   }
 
-  /** Replays the pre-rendered tick. Two nodes, no synthesis. */
-  private _play(context: AudioContext, buffer: AudioBuffer): void {
+  /** Replays the pre-rendered tick at `rate`. Two nodes, no synthesis. */
+  private _play(context: AudioContext, buffer: AudioBuffer, rate: number): void {
     const source = context.createBufferSource();
     const gain = context.createGain();
 
     source.buffer = buffer;
 
-    // A few percent either way. The buffer is identical every time, and an
-    // exactly repeating sample reads as machine-gun fire on a fast scroll.
-    source.playbackRate.value = 1 + (Math.random() * 2 - 1) * rateJitter;
+    // Resampling the one buffer is what shifts the pitch - cheaper than
+    // re-rendering per tick, and the shift is small enough that the artefacts
+    // of doing it this way are inaudible on a 12ms transient.
+    source.playbackRate.value = rate;
 
     gain.gain.value = tickGain;
 

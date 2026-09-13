@@ -7,6 +7,7 @@
         [values]="prefixItems"
         [haptics]="haptics"
         [sound]="sound"
+        [respectMute]="respectMute"
         [ngModel]="prefix"
         (ngModelChange)="prefixChanged($event)">
     </fs-scroll-picker>
@@ -20,6 +21,7 @@
       [infinite]="infinite"
       [haptics]="haptics"
       [sound]="sound"
+      [respectMute]="respectMute"
       [ngModel]="whole"
       (ngModelChange)="wholeChanged($event)">
   </fs-scroll-picker>
@@ -33,6 +35,7 @@
         infinite
         [haptics]="haptics"
         [sound]="sound"
+        [respectMute]="respectMute"
         [ngModel]="fraction"
         (ngModelChange)="fractionChanged($event)">
     </fs-scroll-picker>
@@ -44,6 +47,7 @@
         [values]="suffixItems"
         [haptics]="haptics"
         [sound]="sound"
+        [respectMute]="respectMute"
         [ngModel]="suffix"
         (ngModelChange)="suffixChanged($event)">
     </fs-scroll-picker>

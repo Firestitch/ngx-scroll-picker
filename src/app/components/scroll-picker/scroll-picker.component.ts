@@ -120,6 +120,20 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
    */
   @Input({ transform: booleanAttribute }) public sound = true;
 
+  /**
+   * Whether the tick obeys the iPhone's physical ringer switch.
+   *
+   * True declares the audio ambient, which is what every native iOS UI sound
+   * does: it mixes with the user's music instead of ducking it, and a muted
+   * phone stays silent. Set false for a kiosk or a demo that has to be heard
+   * regardless - it ignores a signal the user set deliberately, so it is a
+   * poor default for a consumer app.
+   *
+   * Only iOS Safari 16.4+ implements the API behind this; elsewhere it has no
+   * effect either way.
+   */
+  @Input({ transform: booleanAttribute }) public respectMute = true;
+
   @Input()
   @HostBinding('style.width') public width;
 
@@ -221,7 +235,7 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
   }
 
   public ngOnChanges(changes: SimpleChanges): void {
-    if (changes.haptics || changes.sound) {
+    if (changes.haptics || changes.sound || changes.respectMute) {
       this._syncFeedback();
     }
 
@@ -1005,6 +1019,7 @@ export class ScrollPickerComponent implements OnInit, OnDestroy, OnChanges, Cont
   private _syncFeedback(): void {
     this._feedback.haptics = this.haptics;
     this._feedback.sound = this.sound;
+    this._feedback.respectMute = this.respectMute;
   }
 
   /** The detent a relative step counts from. */

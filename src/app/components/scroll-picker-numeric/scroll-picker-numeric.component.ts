@@ -93,6 +93,9 @@ export class ScrollPickerNumericComponent implements OnChanges, ControlValueAcce
   /** Clicks once per value passed, on every column. */
   @Input({ transform: booleanAttribute }) public sound = true;
 
+  /** Whether the tick obeys the iPhone ringer switch. See the picker. */
+  @Input({ transform: booleanAttribute }) public respectMute = true;
+
   @Input()
   @HostBinding('style.width') public width;
 

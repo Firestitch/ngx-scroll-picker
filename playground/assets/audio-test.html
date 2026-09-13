@@ -1,52 +1,79 @@
 <!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Picker tick tuner</title>
+<title>Tick frequency finder</title>
 <style>
   :root { color-scheme: dark; }
   * { box-sizing: border-box; }
   body { font: 15px/1.5 -apple-system, system-ui, sans-serif; margin: 0;
-         padding: 16px 16px 80px; background: #111; color: #eee; }
+         padding: 14px 14px 90px; background: #111; color: #eee; }
   h1 { font-size: 17px; margin: 0 0 2px; }
-  p.sub { margin: 0 0 16px; color: #999; font-size: 13px; }
-  .preset { border: 1px solid #333; border-radius: 10px; padding: 12px 14px;
-            margin-bottom: 10px; background: #1a1a1a; }
-  .preset h2 { font-size: 14px; margin: 0 0 3px; }
-  .preset .d { color: #999; font-size: 12.5px; margin: 0 0 10px; }
-  button { font: inherit; font-size: 14px; padding: 10px 14px; margin: 0 6px 6px 0;
-           cursor: pointer; background: #2a2a2a; color: #eee; border: 1px solid #444;
-           border-radius: 8px; -webkit-tap-highlight-color: transparent; }
-  button.go { background: #2d4a2d; border-color: #3d6a3d; }
-  .tuner { border: 1px solid #3a3a5a; border-radius: 10px; padding: 12px 14px;
-           background: #16161f; margin: 18px 0 10px; }
+  p.sub { margin: 0 0 14px; color: #999; font-size: 13px; }
+  .step { border: 1px solid #333; border-radius: 10px; padding: 12px 14px;
+          margin-bottom: 14px; background: #1a1a1a; }
+  .step h2 { font-size: 14px; margin: 0 0 6px; color: #9cdcfe; }
+  .step p { margin: 0 0 10px; font-size: 12.5px; color: #aaa; }
+  .grid { display: flex; flex-wrap: wrap; gap: 6px; }
+  button { font: inherit; font-size: 14px; padding: 11px 13px; cursor: pointer;
+           background: #2a2a2a; color: #eee; border: 1px solid #444; border-radius: 8px;
+           -webkit-tap-highlight-color: transparent; }
+  button:active { background: #3d5a3d; }
+  button.pick { background: #23303d; border-color: #3a5a7a; }
+  button.wide { width: 100%; margin-top: 8px; }
   .row { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; }
-  .row label { flex: 0 0 116px; font-size: 12.5px; color: #bbb; }
+  .row label { flex: 0 0 108px; font-size: 12.5px; color: #bbb; }
   .row input { flex: 1; min-width: 0; }
-  .row output { flex: 0 0 62px; text-align: right; font-family: ui-monospace, monospace;
+  .row output { flex: 0 0 58px; text-align: right; font-family: ui-monospace, monospace;
                 font-size: 12.5px; color: #6ec96e; }
-  #dump { width: 100%; height: 130px; margin-top: 10px; background: #000; color: #9cdcfe;
+  #dump { width: 100%; height: 120px; margin-top: 8px; background: #000; color: #9cdcfe;
           border: 1px solid #333; border-radius: 8px; padding: 10px;
           font-family: ui-monospace, monospace; font-size: 11.5px; }
-  .warn { color: #e6c07b; font-size: 12.5px; }
+  .note { color: #e6c07b; font-size: 12.5px; }
+  .chosen { color: #6ec96e; font-family: ui-monospace, monospace; font-size: 12.5px; }
 </style>
 
-<h1>Picker tick tuner</h1>
-<p class="sub">Unmute the phone first (physical switch). Tap a preset, or tune by hand
-below and send me the numbers.</p>
+<h1>Tick frequency finder</h1>
+<p class="sub"><b>Unmute the phone</b> (side switch). Open Clock&nbsp;&rarr;&nbsp;Timer,
+scroll the wheel, then come back and work through the steps.</p>
 
-<div id="presets"></div>
-
-<div class="tuner">
-  <h2 style="font-size:14px;margin:0 0 8px">Tune by hand</h2>
-  <div id="sliders"></div>
-  <button class="go" id="playCustom">Play run</button>
-  <button id="single">Single</button>
-  <button id="copy">Show values</button>
-  <textarea id="dump" readonly placeholder="Tap 'Show values' and paste the result back to me."></textarea>
+<div class="step">
+  <h2>Step 1 &mdash; find the pitch</h2>
+  <p>Each button is a bare filtered click at one frequency, nothing else. Tap down the
+  list and pick the one closest to the Timer wheel. Ignore length and volume for now.</p>
+  <div class="grid" id="sweep"></div>
+  <div class="chosen" id="pick1">chosen: &mdash;</div>
 </div>
 
-<p class="warn">On a real iPhone most of the picker feel is the Taptic Engine, not sound.
-A web page can't reproduce that on iOS — so this will always be an approximation.</p>
+<div class="step">
+  <h2>Step 2 &mdash; find the length</h2>
+  <p>Same pitch as you picked, different durations. Shorter reads as a click, longer as a
+  blip.</p>
+  <div class="grid" id="lens"></div>
+  <div class="chosen" id="pick2">chosen: &mdash;</div>
+</div>
+
+<div class="step">
+  <h2>Step 3 &mdash; texture</h2>
+  <p>Noise is a dry click; tone is more pitched; mixed is both. Same pitch and length.</p>
+  <div class="grid" id="tex"></div>
+  <div class="chosen" id="pick3">chosen: &mdash;</div>
+</div>
+
+<div class="step">
+  <h2>Step 4 &mdash; hear it as a scroll</h2>
+  <p>Your choices, played as a real scroll and as a fast flick. This is the one that has
+  to sound right.</p>
+  <button class="pick" onclick="runChosen(1,0)">Single</button>
+  <button class="pick" onclick="runChosen(10,0.16)">Slow scroll</button>
+  <button class="pick" onclick="runChosen(18,0.033)">Fast flick</button>
+  <button class="pick" onclick="runDecel()">Fling (pitch falls)</button>
+  <div id="fine" style="margin-top:12px"></div>
+  <button class="wide" id="show">Show values to send back</button>
+  <textarea id="dump" readonly placeholder="Tap the button above, then paste this to me."></textarea>
+</div>
+
+<p class="note">A web page cannot drive the Taptic Engine on iOS, so this is the audio
+half only. Most of the real feel is the haptic.</p>
 
 <script>
 let ctx = null;
@@ -54,68 +81,63 @@ function ensure() {
   if (!ctx) {
     const C = window.AudioContext || window.webkitAudioContext;
     ctx = new C({ latencyHint: 'interactive' });
-    if (navigator.audioSession) { navigator.audioSession.type = 'ambient'; }
+    // 'playback' so the tuner is audible even with the ringer switch off.
+    if (navigator.audioSession) { navigator.audioSession.type = 'playback'; }
   }
   if (ctx.state !== 'running') { ctx.resume().catch(() => {}); }
   return ctx;
 }
 
 const FLOOR = 0.0001;
+const state = { freq: 4200, len: 0.010, texture: 'noise', q: 1.0, gain: 0.3, hp: 0.35 };
 
-// The shipping defaults.
-const base = {
-  tickDuration: 0.012,
-  bodyStart: 2600, bodyEnd: 1500, bodySweep: 0.004,
-  bodyGain: 0.18, bodyAttack: 0.0005, bodyDecay: 0.009,
-  clickFreq: 4200, clickQ: 0.9, clickNoise: 0.006,
-  clickGain: 0.85, clickDecay: 0.004,
-  busHighpass: 900, tickGain: 0.25,
-};
-
-// Render one tick offline with the given params, return an AudioBuffer.
+// One tick, rendered offline. texture: noise | tone | mixed
 async function render(p) {
   const OC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
   const sr = ensure().sampleRate;
-  const off = new OC(1, Math.ceil(sr * p.tickDuration), sr);
+  const off = new OC(1, Math.max(64, Math.ceil(sr * p.len)), sr);
 
   const bus = off.createBiquadFilter();
   bus.type = 'highpass';
-  bus.frequency.value = p.busHighpass;
+  bus.frequency.value = Math.max(60, p.freq * p.hp);
   bus.connect(off.destination);
 
-  if (p.bodyGain > 0.001) {
-    const o = off.createOscillator(), g = off.createGain();
-    o.type = 'sine';
-    o.frequency.setValueAtTime(p.bodyStart, 0);
-    o.frequency.exponentialRampToValueAtTime(p.bodyEnd, p.bodySweep);
-    g.gain.setValueAtTime(FLOOR, 0);
-    g.gain.exponentialRampToValueAtTime(p.bodyGain, p.bodyAttack);
-    g.gain.exponentialRampToValueAtTime(FLOOR, p.bodyDecay);
-    o.connect(g); g.connect(bus);
-    o.start(0); o.stop(p.tickDuration);
-  }
+  const wantNoise = p.texture === 'noise' || p.texture === 'mixed';
+  const wantTone  = p.texture === 'tone'  || p.texture === 'mixed';
 
-  if (p.clickGain > 0.001) {
-    const n = Math.ceil(sr * p.clickNoise);
+  if (wantNoise) {
+    const n = Math.ceil(sr * Math.min(p.len, 0.012));
     const buf = off.createBuffer(1, n, sr);
     const d = buf.getChannelData(0);
     for (let i = 0; i < n; i++) { d[i] = Math.random() * 2 - 1; }
     const s = off.createBufferSource(), b = off.createBiquadFilter(), g = off.createGain();
     s.buffer = buf;
-    b.type = 'bandpass'; b.frequency.value = p.clickFreq; b.Q.value = p.clickQ;
-    g.gain.setValueAtTime(p.clickGain, 0);
-    g.gain.exponentialRampToValueAtTime(FLOOR, p.clickDecay);
+    b.type = 'bandpass'; b.frequency.value = p.freq; b.Q.value = p.q;
+    g.gain.setValueAtTime(p.texture === 'mixed' ? 0.7 : 1.0, 0);
+    g.gain.exponentialRampToValueAtTime(FLOOR, p.len);
     s.connect(b); b.connect(g); g.connect(bus);
     s.start(0);
+  }
+
+  if (wantTone) {
+    const o = off.createOscillator(), g = off.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(p.freq * 1.15, 0);
+    o.frequency.exponentialRampToValueAtTime(p.freq * 0.7, p.len);
+    g.gain.setValueAtTime(FLOOR, 0);
+    g.gain.exponentialRampToValueAtTime(p.texture === 'mixed' ? 0.35 : 0.8, 0.0005);
+    g.gain.exponentialRampToValueAtTime(FLOOR, p.len);
+    o.connect(g); g.connect(bus);
+    o.start(0); o.stop(p.len);
   }
 
   return off.startRendering();
 }
 
-function play(buf, gain, when, jitter) {
+function play(buf, when, gain) {
   const s = ctx.createBufferSource(), g = ctx.createGain();
   s.buffer = buf;
-  s.playbackRate.value = 1 + (Math.random() * 2 - 1) * (jitter ?? 0.03);
+  s.playbackRate.value = 1 + (Math.random() * 2 - 1) * 0.03;
   g.gain.value = gain;
   s.connect(g); g.connect(ctx.destination);
   s.start(when);
@@ -125,106 +147,116 @@ function play(buf, gain, when, jitter) {
 async function run(p, count, gap) {
   ensure();
   const buf = await render(p);
-  const t0 = ctx.currentTime + 0.06;
-  for (let i = 0; i < count; i++) { play(buf, p.tickGain, t0 + i * gap); }
+  const t0 = ctx.currentTime + 0.05;
+  for (let i = 0; i < count; i++) { play(buf, t0 + i * gap, p.gain); }
 }
 
-// ---- Presets ---------------------------------------------------------------
-const presets = [
-  { name: 'A — Shipping now (retuned bright)', d: '12ms, click at 4.2kHz, body 2.6→1.5kHz, highpass 900Hz.',
-    p: {} },
-  { name: 'B — Brighter still', d: 'Click at 5.5kHz, highpass 1.5kHz. If A is still too low.',
-    p: { clickFreq: 5500, busHighpass: 1500, bodyStart: 3200, bodyEnd: 2000 } },
-  { name: 'C — Very bright, very short', d: '7ms, click at 6.5kHz. The extreme end — nearly all air.',
-    p: { tickDuration: 0.007, clickFreq: 6500, clickNoise: 0.004, clickDecay: 0.0025,
-         bodyGain: 0.10, bodyDecay: 0.005, busHighpass: 2000 } },
-  { name: 'D — Pure noise, no body', d: 'Body off entirely. Just a bright filtered transient.',
-    p: { bodyGain: 0, clickFreq: 4800, clickGain: 0.95, tickDuration: 0.009,
-         clickDecay: 0.003, busHighpass: 1200 } },
-  { name: 'E — Narrow band "tk"', d: 'High Q at 3.8kHz — more pitched, more plasticky.',
-    p: { clickQ: 3.0, clickFreq: 3800, bodyGain: 0.12, busHighpass: 1000 } },
-  { name: 'F — Two-layer bright', d: 'Bright click plus an audible high body. Slightly fuller.',
-    p: { clickFreq: 4600, bodyStart: 3400, bodyEnd: 2400, bodyGain: 0.30,
-         tickDuration: 0.014, busHighpass: 1100 } },
-  { name: 'OLD — the low one you rejected', d: 'The previous thumpy version, for comparison only.',
-    p: { tickDuration: 0.035, bodyStart: 320, bodyEnd: 180, bodySweep: 0.020,
-         bodyGain: 0.50, bodyDecay: 0.028, clickFreq: 2200, clickQ: 1.2,
-         clickNoise: 0.012, clickGain: 0.60, clickDecay: 0.008, busHighpass: 120 } },
-];
+function runChosen(count, gap) { run(state, count, gap); }
 
-const wrap = document.getElementById('presets');
-presets.forEach((pre) => {
-  const p = { ...base, ...pre.p };
-  const card = document.createElement('div');
-  card.className = 'preset';
-  const h = document.createElement('h2'); h.textContent = pre.name;
-  const d = document.createElement('p'); d.className = 'd'; d.textContent = pre.d;
-  const one = document.createElement('button');
-  one.textContent = 'Single';
-  one.onclick = () => run(p, 1, 0);
-  const slow = document.createElement('button');
-  slow.className = 'go'; slow.textContent = 'Slow scroll';
-  slow.onclick = () => run(p, 10, 0.16);
-  const fast = document.createElement('button');
-  fast.textContent = 'Fast flick';
-  fast.onclick = () => run(p, 16, 0.032);
-  const load = document.createElement('button');
-  load.textContent = 'Load into tuner';
-  load.onclick = () => { setAll(p); };
-  card.append(h, d, one, slow, fast, load);
-  wrap.appendChild(card);
+// A decelerating fling, with the pitch falling as the gaps widen - which is how
+// iOS does it: the tactile frequency holds while the AUDIO pitch drops as the
+// wheel slows (described in Apple's haptic patents).
+const rateFast = 1.18, rateSlow = 0.82, gapFast = 30, gapSlow = 260;
+function rateFor(gapMs) {
+  const c = Math.max(gapFast, Math.min(gapSlow, gapMs));
+  return rateFast + (rateSlow - rateFast) * ((c - gapFast) / (gapSlow - gapFast));
+}
+
+async function runDecel() {
+  ensure();
+  const buf = await render(state);
+  let t = ctx.currentTime + 0.05;
+  let gap = 0.030;
+  for (let i = 0; i < 24 && gap < 0.4; i++) {
+    const s = ctx.createBufferSource(), g = ctx.createGain();
+    s.buffer = buf;
+    s.playbackRate.value = rateFor(gap * 1000) * (1 + (Math.random() * 2 - 1) * 0.03);
+    g.gain.value = state.gain;
+    s.connect(g); g.connect(ctx.destination);
+    s.start(t);
+    s.onended = () => { s.disconnect(); g.disconnect(); };
+    t += gap;
+    gap *= 1.14;
+  }
+}
+
+// ---- Step 1: pitch sweep ---------------------------------------------------
+const freqs = [1200, 1800, 2500, 3200, 4000, 5000, 6000, 7500, 9000];
+const sweepHost = document.getElementById('sweep');
+freqs.forEach((f) => {
+  const b = document.createElement('button');
+  b.textContent = (f / 1000).toFixed(f < 10000 ? 1 : 0) + 'k';
+  b.onclick = () => {
+    run({ ...state, freq: f, len: 0.010, texture: 'noise' }, 4, 0.19);
+    state.freq = f;
+    document.getElementById('pick1').textContent = 'chosen: ' + f + ' Hz';
+    sweepHost.querySelectorAll('button').forEach((x) => x.classList.remove('pick'));
+    b.classList.add('pick');
+  };
+  sweepHost.appendChild(b);
 });
 
-// ---- Sliders ---------------------------------------------------------------
-const specs = [
-  ['bodyStart',   'Body from Hz',  200, 6000, 100],
-  ['bodyEnd',     'Body to Hz',    120, 4000, 100],
-  ['bodySweep',   'Sweep s',     0.001, 0.03, 0.001],
-  ['bodyGain',    'Body gain',       0, 1.0, 0.02],
-  ['bodyDecay',   'Body decay s',0.003, 0.04, 0.001],
-  ['clickFreq',   'Click Hz',      800, 9000, 100],
-  ['clickQ',      'Click Q',       0.3, 5.0, 0.1],
-  ['clickNoise',  'Noise len s', 0.002, 0.02, 0.001],
-  ['clickGain',   'Click gain',      0, 1.0, 0.05],
-  ['clickDecay',  'Click decay s',0.001, 0.015, 0.0005],
-  ['busHighpass', 'Highpass Hz',   100, 4000, 100],
-  ['tickDuration','Total len s',  0.005, 0.05, 0.001],
-  ['tickGain',    'Output gain',  0.02, 0.6, 0.01],
+// ---- Step 2: length --------------------------------------------------------
+const lens = [0.004, 0.006, 0.008, 0.012, 0.018, 0.026, 0.035];
+const lensHost = document.getElementById('lens');
+lens.forEach((L) => {
+  const b = document.createElement('button');
+  b.textContent = Math.round(L * 1000) + 'ms';
+  b.onclick = () => {
+    run({ ...state, len: L }, 4, 0.19);
+    state.len = L;
+    document.getElementById('pick2').textContent = 'chosen: ' + Math.round(L * 1000) + ' ms';
+    lensHost.querySelectorAll('button').forEach((x) => x.classList.remove('pick'));
+    b.classList.add('pick');
+  };
+  lensHost.appendChild(b);
+});
+
+// ---- Step 3: texture -------------------------------------------------------
+const texHost = document.getElementById('tex');
+[['noise', 'Noise (dry click)'], ['tone', 'Tone (pitched)'], ['mixed', 'Mixed']]
+  .forEach(([t, label]) => {
+    const b = document.createElement('button');
+    b.textContent = label;
+    b.onclick = () => {
+      run({ ...state, texture: t }, 4, 0.19);
+      state.texture = t;
+      document.getElementById('pick3').textContent = 'chosen: ' + t;
+      texHost.querySelectorAll('button').forEach((x) => x.classList.remove('pick'));
+      b.classList.add('pick');
+    };
+    texHost.appendChild(b);
+  });
+
+// ---- Step 4: fine sliders --------------------------------------------------
+const fine = [
+  ['freq',  'Pitch Hz',   800, 9000, 100],
+  ['len',   'Length s', 0.003, 0.04, 0.001],
+  ['q',     'Sharpness',  0.3, 5.0, 0.1],
+  ['hp',    'Highpass x', 0.1, 0.9, 0.05],
+  ['gain',  'Volume',    0.05, 0.8, 0.01],
 ];
-
-const custom = { ...base };
-const sliders = {};
-const host = document.getElementById('sliders');
-
-specs.forEach(([key, label, min, max, step]) => {
+const fineHost = document.getElementById('fine');
+const fineEls = {};
+fine.forEach(([key, label, min, max, step]) => {
   const row = document.createElement('div'); row.className = 'row';
   const l = document.createElement('label'); l.textContent = label;
   const i = document.createElement('input');
-  i.type = 'range'; i.min = min; i.max = max; i.step = step; i.value = custom[key];
-  const o = document.createElement('output'); o.textContent = custom[key];
-  i.addEventListener('input', () => {
-    custom[key] = parseFloat(i.value);
-    o.textContent = i.value;
-  });
-  sliders[key] = { input: i, out: o };
+  i.type = 'range'; i.min = min; i.max = max; i.step = step; i.value = state[key];
+  const o = document.createElement('output'); o.textContent = state[key];
+  i.addEventListener('input', () => { state[key] = parseFloat(i.value); o.textContent = i.value; });
+  fineEls[key] = { input: i, out: o };
   row.append(l, i, o);
-  host.appendChild(row);
+  fineHost.appendChild(row);
 });
 
-function setAll(p) {
-  Object.keys(sliders).forEach((k) => {
-    if (p[k] === undefined) { return; }
-    custom[k] = p[k];
-    sliders[k].input.value = p[k];
-    sliders[k].out.textContent = p[k];
-  });
-}
-
-document.getElementById('playCustom').onclick = () => run(custom, 10, 0.16);
-document.getElementById('single').onclick = () => run(custom, 1, 0);
-document.getElementById('copy').onclick = () => {
-  document.getElementById('dump').value = specs
-    .map(([k]) => k + ' = ' + custom[k])
-    .join('\n');
+document.getElementById('show').onclick = () => {
+  document.getElementById('dump').value =
+    'freq     = ' + state.freq + ' Hz\n' +
+    'length   = ' + state.len + ' s (' + Math.round(state.len * 1000) + ' ms)\n' +
+    'texture  = ' + state.texture + '\n' +
+    'Q        = ' + state.q + '\n' +
+    'highpass = ' + Math.round(state.freq * state.hp) + ' Hz (x' + state.hp + ')\n' +
+    'volume   = ' + state.gain;
 };
 </script>
