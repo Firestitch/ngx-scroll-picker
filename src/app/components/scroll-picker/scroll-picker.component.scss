@@ -3,9 +3,14 @@
   --fs-scroll-picker-height: 180px;
   --fs-scroll-picker-item-height: 34px;
   --fs-scroll-picker-font-size: 20px;
-  --fs-scroll-picker-color: #000;
-  --fs-scroll-picker-background: #fff;
-  --fs-scroll-picker-selection-background: rgba(120, 120, 128, 0.12);
+  // Defaulted to the shared colour contract from @firestitch/style
+  // (styles/_tokens.scss) so a wheel inside a dark surface follows it without
+  // the host having to set these by hand. Each fallback is the literal this
+  // hook defaulted to before, so an app that defines no --fs-* token — every
+  // existing Material 2 consumer — is unchanged. Still overridable per host.
+  --fs-scroll-picker-color: var(--fs-color-text, #000);
+  --fs-scroll-picker-background: var(--fs-color-surface-raised, #fff);
+  --fs-scroll-picker-selection-background: var(--fs-color-selected, rgba(120, 120, 128, 0.12));
   --fs-scroll-picker-selection-radius: 8px;
   --fs-scroll-picker-disabled-opacity: 0.25;
 
