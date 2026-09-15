@@ -2,7 +2,7 @@
   "name": "@firestitch/scroll-picker",
   "title": "Scroll Picker",
   "description": "@firestitch/scroll-picker",
-  "version": "18.0.3",
+  "version": "18.0.4",
   "repository": {
     "type": "git",
     "url": "https://github.com/Firestitch/ngx-scroll-picker"
