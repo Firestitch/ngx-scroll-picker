@@ -21,7 +21,12 @@
   // so the full default would read as a gap between the digits of one number.
   // Still enough to keep the selected row clear of the clipping boundary.
   --fs-scroll-picker-item-padding: 4px;
-  --fs-scroll-picker-numeric-affix-color: var(--fs-scroll-picker-color, #000);
+
+  // Defaulted through the same colour contract the drums use, NOT through
+  // --fs-scroll-picker-color: that hook is declared on the child picker's own
+  // :host, so it is undefined up here and the fallback always won — which
+  // painted the decimal point black while the drums beside it rendered white.
+  --fs-scroll-picker-numeric-affix-color: var(--fs-color-text, #000);
 
   display: inline-block;
 

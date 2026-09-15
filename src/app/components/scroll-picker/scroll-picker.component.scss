@@ -157,31 +157,33 @@
   z-index: 0;
 }
 
-// Gradient fades top and bottom, so values dissolve into the background at the
-// edges instead of being cut off by a hard overlay.
-.mask {
-  position: absolute;
-  left: 0;
-  width: 100%;
-  height: calc((var(--fs-scroll-picker-height) - var(--fs-scroll-picker-item-height)) / 2);
-  pointer-events: none;
-  z-index: 2;
-}
-
-.mask-top {
-  top: 0;
-  background: linear-gradient(
-    to bottom,
-    var(--fs-scroll-picker-background) 0%,
-    rgba(255, 255, 255, 0) 100%
+// The edge fade is applied to the SCROLLER'S OWN PIXELS rather than painted
+// over them. The masks used to be two absolutely-positioned boxes filled with
+// a gradient from --fs-scroll-picker-background to rgba(255,255,255,0) — an
+// opaque strip standing in for the background, which only disappears when it
+// guesses that background exactly. It could not: the interpolation ran through
+// transparent WHITE, so on a dark surface each drum painted a pale smear, and a
+// multi-column picker drew one per column with visible seams between them.
+//
+// Fading alpha instead involves no colour at all, so it is correct on any
+// background, needs nothing declared by the host, and leaves no seams.
+.scroller {
+  --fs-scroll-picker-mask-fade: calc(
+    (var(--fs-scroll-picker-height) - var(--fs-scroll-picker-item-height)) / 2
   );
-}
 
-.mask-bottom {
-  bottom: 0;
-  background: linear-gradient(
-    to top,
-    var(--fs-scroll-picker-background) 0%,
-    rgba(255, 255, 255, 0) 100%
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 var(--fs-scroll-picker-mask-fade),
+    #000 calc(100% - var(--fs-scroll-picker-mask-fade)),
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 var(--fs-scroll-picker-mask-fade),
+    #000 calc(100% - var(--fs-scroll-picker-mask-fade)),
+    transparent 100%
   );
 }
