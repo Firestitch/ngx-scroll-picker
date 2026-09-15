@@ -9,7 +9,7 @@
   // hook defaulted to before, so an app that defines no --fs-* token — every
   // existing Material 2 consumer — is unchanged. Still overridable per host.
   --fs-scroll-picker-color: var(--fs-color-text, #000);
-  --fs-scroll-picker-background: var(--fs-color-surface-raised, #fff);
+  --fs-scroll-picker-background: var(--fs-surface-background, #fff);
   --fs-scroll-picker-selection-background: var(--fs-color-selected, rgba(120, 120, 128, 0.12));
   --fs-scroll-picker-selection-radius: 8px;
   --fs-scroll-picker-disabled-opacity: 0.25;
